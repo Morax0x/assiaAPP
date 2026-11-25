@@ -1,7 +1,12 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
-export async function createClient() {
+export async function createClient(): Promise<SupabaseClient> {
+  if (process.env.DEMO_MODE === "1") {
+    const { demoServerClient } = await import("@/lib/demo/client");
+    return (await demoServerClient()) as unknown as SupabaseClient;
+  }
   const cookieStore = await cookies();
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,

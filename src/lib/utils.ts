@@ -24,9 +24,10 @@ export function fmtDate(d: string | Date | null | undefined) {
 export function fmtDateTime(d: string | Date | null | undefined) {
   if (!d) return "—";
   const dt = typeof d === "string" ? new Date(d) : d;
-  return new Intl.DateTimeFormat("en-GB", {
-    year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit",
-  }).format(dt);
+  if (isNaN(dt.getTime())) return "—";
+  const date = new Intl.DateTimeFormat("en-GB", { year: "numeric", month: "2-digit", day: "2-digit" }).format(dt);
+  const time = new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false }).format(dt);
+  return `${date} ${time}`;
 }
 
 export function daysLabel(days: number | null) {

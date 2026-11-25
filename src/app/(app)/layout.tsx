@@ -1,6 +1,7 @@
 import { AppShell } from "@/components/layout/app-shell";
 import { requireSession } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { DemoBar } from "@/components/layout/demo-bar";
 
 export const dynamic = "force-dynamic";
 
@@ -13,6 +14,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     .in("bucket", ["expired", "critical"]);
   return (
     <AppShell perms={[...s.perms]} user={{ name: s.profile.full_name, role: s.profile.role }} alertCount={count ?? 0}>
+      {process.env.DEMO_MODE === "1" && <DemoBar current={s.profile.role} />}
       {children}
     </AppShell>
   );

@@ -5,6 +5,14 @@ const PUBLIC = ["/login", "/share", "/manifest.webmanifest", "/sw.js", "/icons",
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  if (process.env.DEMO_MODE === "1") {
+    if (pathname === "/login" || pathname === "/") {
+      const url = request.nextUrl.clone();
+      url.pathname = "/dashboard";
+      return NextResponse.redirect(url);
+    }
+    return NextResponse.next();
+  }
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL) return NextResponse.next();
 
   let response = NextResponse.next({ request });
