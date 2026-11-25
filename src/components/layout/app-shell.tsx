@@ -9,6 +9,7 @@ import {
 import { NAV } from "@/components/layout/nav";
 import { Brand, LogoMark } from "@/components/layout/logo";
 import { CommandPalette } from "@/components/layout/command-palette";
+import { DisplayPanel, TopbarDisplay } from "@/components/layout/theme-controls";
 import { cn } from "@/lib/utils";
 import { ROLE_LABEL } from "@/lib/permissions";
 import { signOut } from "@/modules/auth/actions";
@@ -77,7 +78,7 @@ export function AppShell({ children, perms, user, alertCount }: Props) {
                 href={n.href}
                 title={collapsed ? n.label : undefined}
                 className={cn(
-                  "flex h-10 items-center gap-3 rounded-ctl px-3 text-sm transition-colors",
+                  "flex h-11 items-center gap-3 rounded-ctl px-3 text-[15px] transition-colors",
                   collapsed && "justify-center px-0",
                   active ? "bg-navy-soft font-medium text-navy" : "text-ink-2 hover:bg-mute-soft hover:text-ink",
                 )}
@@ -119,7 +120,8 @@ export function AppShell({ children, perms, user, alertCount }: Props) {
               <kbd className="hidden rounded border border-line bg-surface px-1.5 text-[11px] md:block num">Ctrl K</kbd>
             </button>
             <div className="hidden flex-1 md:block" />
-            <Link href="/alerts" className="relative rounded-md p-2 text-ink-2 hover:bg-mute-soft" aria-label="التنبيهات">
+            <TopbarDisplay />
+            <Link href="/alerts" className="relative rounded-md p-2.5 text-ink-2 hover:bg-mute-soft" aria-label="التنبيهات">
               <Bell className="size-5" strokeWidth={1.75} />
               {alertCount > 0 && (
                 <span className="absolute -top-0.5 end-0 min-w-4 rounded-full bg-orange px-1 text-center text-[10px] font-semibold leading-4 text-white num">
@@ -171,6 +173,7 @@ export function AppShell({ children, perms, user, alertCount }: Props) {
               ))}
             </nav>
             <div className="border-t border-line p-3 safe-b">
+              <DisplayPanel className="mb-4" />
               <div className="mb-2 text-sm font-medium">{user.name}</div>
               <div className="mb-3 text-xs text-ink-3">{ROLE_LABEL[user.role]}</div>
               <form action={signOut}>
@@ -189,7 +192,7 @@ export function AppShell({ children, perms, user, alertCount }: Props) {
           {mobilePrimary.map((n) => {
             const active = isActive(path, n.href);
             return (
-              <Link key={n.href} href={n.href} className={cn("relative flex h-14 flex-col items-center justify-center gap-0.5 text-[11px]", active ? "text-navy" : "text-ink-3")}>
+              <Link key={n.href} href={n.href} className={cn("relative flex h-16 flex-col items-center justify-center gap-0.5 text-xs", active ? "text-navy" : "text-ink-3")}>
                 <n.icon className="size-5" strokeWidth={active ? 2 : 1.75} />
                 {n.label}
                 {n.href === "/alerts" && alertCount > 0 && (

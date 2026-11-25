@@ -14,6 +14,7 @@ export default async function SettingsLayout({ children }: { children: React.Rea
     isOwner && { href: "/settings/roles", label: "الأدوار والصلاحيات" },
     p.has("share.create") && { href: "/settings/shares", label: "روابط المشاركة" },
     p.has("audit.view") && { href: "/settings/audit", label: "سجل النشاط" },
+    (p.has("clients.delete") || p.has("txn.delete") || p.has("docs.delete")) && { href: "/settings/trash", label: "سلة المحذوفات" },
     isOwner && { href: "/settings/notifications", label: "إشعاراتي" },
   ].filter(Boolean) as { href: string; label: string }[];
   return (

@@ -2,7 +2,7 @@ import Image from "next/image";
 import { cn } from "@/lib/utils";
 
 export function LogoMark({ className }: { className?: string }) {
-  return <Image src="/logo.png" alt="آسيا" width={96} height={100} priority className={cn("size-8 object-contain", className)} />;
+  return <Image src="/logo.png" alt="آسيا" width={96} height={100} priority className={cn("logo-img size-8 object-contain", className)} />;
 }
 
 export function Brand({ compact }: { compact?: boolean }) {

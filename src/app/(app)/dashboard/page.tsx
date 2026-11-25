@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { AlertTriangle, ArrowLeft, Banknote, CircleCheck, CreditCard, FileClock } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Banknote, CircleCheck, CreditCard, FileClock, FilePlus2, Receipt, ScanSearch, Upload, UserPlus, WalletCards } from "lucide-react";
 import { Card, CardHeader, Empty, PageHeader } from "@/components/ui/card";
 import { Badge, STATUS_TONE } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -40,6 +40,25 @@ export default async function DashboardPage() {
   return (
     <>
       <PageHeader title={`مرحباً ${s.profile.full_name.split(" ")[0]}`} description={new Intl.DateTimeFormat("ar-AE", { dateStyle: "full" }).format(new Date())} />
+
+      <nav aria-label="إجراءات سريعة" className="mb-5 grid grid-cols-3 gap-2.5 sm:grid-cols-6">
+        {([
+          s.perms.has("txn.write") && { href: "/transactions/new", label: "معاملة جديدة", icon: FilePlus2, main: true },
+          s.perms.has("clients.write") && { href: "/clients/new", label: "عميل جديد", icon: UserPlus },
+          s.perms.has("docs.write") && { href: "/documents/new", label: "رفع مستند", icon: Upload },
+          s.perms.has("treasury.write") && { href: "/treasury?new=expense", label: "تسجيل مصروف", icon: Receipt },
+          { href: "/receivables", label: "المستحقات", icon: WalletCards },
+          { href: "/search", label: "بحث ذكي", icon: ScanSearch },
+        ].filter(Boolean) as { href: string; label: string; icon: typeof Upload; main?: boolean }[]).map((a) => (
+          <Link
+            key={a.href} href={a.href}
+            className={`flex min-h-[5.25rem] flex-col items-center justify-center gap-2 rounded-card border px-2 py-3 text-center text-[13px] font-medium leading-tight transition-colors sm:text-sm ${a.main ? "border-orange bg-orange text-white hover:bg-orange-hover" : "border-line bg-surface text-ink hover:border-navy hover:bg-navy-soft"}`}
+          >
+            <a.icon className={`size-6 ${a.main ? "" : "text-navy"}`} strokeWidth={1.6} />
+            {a.label}
+          </Link>
+        ))}
+      </nav>
 
       <div className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Kpi icon={Banknote} label="رصيد الكاش" value={st.cash_balance === null || st.cash_balance === undefined ? null : money(st.cash_balance)} />

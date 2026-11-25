@@ -3,13 +3,13 @@
 @theme {
   --font-sans: var(--font-plex), ui-sans-serif, system-ui, sans-serif;
 
-  --color-bg: #f8fafc;
+  --color-bg: #f6f8fb;
   --color-surface: #ffffff;
   --color-line: #e2e8f0;
   --color-line-strong: #cbd5e1;
   --color-ink: #0f172a;
   --color-ink-2: #475569;
-  --color-ink-3: #64748b;
+  --color-ink-3: #5d6b80;
 
   --color-navy: #204f89;
   --color-navy-hover: #1a4072;
@@ -20,16 +20,51 @@
 
   --color-ok: #166534;
   --color-ok-soft: #e8f5ec;
-  --color-warn: #92600a;
+  --color-warn: #8a5a08;
   --color-warn-soft: #fdf3dc;
   --color-bad: #a32a2a;
   --color-bad-soft: #fbeaea;
   --color-mute: #475569;
   --color-mute-soft: #eef1f5;
 
-  --radius-card: 10px;
-  --radius-ctl: 8px;
+  --radius-card: 12px;
+  --radius-ctl: 9px;
 }
+
+/* ---------- Dark theme (applied by data-theme="dark" on <html>) ---------- */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --color-bg: #0b1220;
+  --color-surface: #121b2d;
+  --color-line: #223049;
+  --color-line-strong: #31415f;
+  --color-ink: #e8eef8;
+  --color-ink-2: #b3c0d4;
+  --color-ink-3: #8696ae;
+
+  --color-navy: #3d7ccc;
+  --color-navy-hover: #5590dc;
+  --color-navy-soft: #172a45;
+  --color-orange: #f26a38;
+  --color-orange-hover: #ff7f4f;
+  --color-orange-soft: #3a2018;
+
+  --color-ok: #6fd29a;
+  --color-ok-soft: #12301f;
+  --color-warn: #f0c062;
+  --color-warn-soft: #382a0d;
+  --color-bad: #ff8f8f;
+  --color-bad-soft: #3b1717;
+  --color-mute: #b3c0d4;
+  --color-mute-soft: #1b2740;
+}
+:root[data-theme="dark"] .logo-img { background: #fff; border-radius: 10px; padding: 3px; }
+
+/* ---------- Text size (for comfortable reading) ---------- */
+html { font-size: 17px; }
+html[data-fs="sm"] { font-size: 15.5px; }
+html[data-fs="md"] { font-size: 17px; }
+html[data-fs="lg"] { font-size: 19.5px; }
 
 html {
   background: var(--color-bg);
@@ -40,9 +75,13 @@ body {
   font-variant-numeric: tabular-nums;
   -webkit-font-smoothing: antialiased;
   min-height: 100dvh;
+  line-height: 1.6;
 }
-input, select, textarea, button { font-family: inherit; }
+input, select, textarea, button { font-family: inherit; font-size: inherit; }
 .num { font-variant-numeric: tabular-nums; unicode-bidi: isolate; }
+input[type="date"] { min-height: 2.75rem; }
+select { background-color: var(--color-surface); }
+option { background: var(--color-surface); color: var(--color-ink); }
 
 /* focus */
 :where(a, button, input, select, textarea, [tabindex]):focus-visible {
@@ -56,10 +95,31 @@ input, select, textarea, button { font-family: inherit; }
 
 ::selection { background: var(--color-navy-soft); }
 
-/* print: invoice page */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
+
+/* skeleton shimmer */
+.skeleton { background: linear-gradient(90deg, var(--color-mute-soft) 25%, var(--color-line) 37%, var(--color-mute-soft) 63%); background-size: 400% 100%; animation: sk 1.4s ease infinite; border-radius: 8px; }
+@keyframes sk { 0% { background-position: 100% 50%; } 100% { background-position: 0 50%; } }
+
+/* print: always light, no chrome */
 @media print {
   @page { size: A4; margin: 14mm; }
+  :root[data-theme="dark"] {
+    color-scheme: light;
+    --color-bg: #fff; --color-surface: #fff; --color-line: #e2e8f0; --color-line-strong: #cbd5e1;
+    --color-ink: #0f172a; --color-ink-2: #475569; --color-ink-3: #5d6b80;
+    --color-navy: #204f89; --color-navy-soft: #eaf0f8; --color-ok: #166534; --color-bad: #a32a2a; --color-warn: #8a5a08;
+    --color-ok-soft: #e8f5ec; --color-bad-soft: #fbeaea; --color-warn-soft: #fdf3dc; --color-mute-soft: #eef1f5;
+  }
+  html { font-size: 14px !important; }
   html, body { background: #fff !important; }
   .no-print { display: none !important; }
   .print-sheet { border: 0 !important; box-shadow: none !important; padding: 0 !important; }
+  :root[data-theme="dark"] .logo-img { background: transparent; padding: 0; }
 }
+
+.dark-show { display: none; }
+:root[data-theme="dark"] .dark-show { display: block; }
+:root[data-theme="dark"] .dark-hide { display: none; }
