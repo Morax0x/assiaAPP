@@ -65,6 +65,7 @@ export default async function TransactionPage({ params }: { params: Promise<{ id
     .select("id,amount,method,occurred_at,description,voided_at,reference_no,receipt_path,profiles(full_name)")
     .eq("transaction_id", id).eq("kind", "govt_fee").order("occurred_at");
 
+  const { data: lineItems } = await supabase.from("transaction_items").select("id,description,description_en,qty,govt_unit,fee_unit").eq("transaction_id", id).order("position");
   const docRows: DocRow[] = (docs ?? []).map((d) => ({
     ...(d as unknown as DocRow),
     type_name: (d as unknown as { document_types: { name: string } | null }).document_types?.name ?? "",
@@ -91,9 +92,9 @@ export default async function TransactionPage({ params }: { params: Promise<{ id
         description={`رقم المعاملة ${t.ref_no}`}
         actions={
           <>
-            <Button asChild variant="outline"><Link href={`/print/${id}`} target="_blank"><Printer /> طباعة الفاتورة</Link></Button>
+            <Button asChild variant="outline"><a href={`/print/${id}`} target="_blank" rel="noreferrer"><Printer /> الفاتورة</a></Button>
             {paidList.some((p) => !p.voided) && (
-              <Button asChild variant="outline"><Link href={`/print/${id}?type=receipt`} target="_blank"><Receipt /> إيصال استلام</Link></Button>
+              <Button asChild variant="outline"><a href={`/print/${id}?type=receipt`} target="_blank" rel="noreferrer"><Receipt /> إيصال استلام</a></Button>
             )}
             {s.perms.has("share.create") && <ShareDialog scope="transaction" transactionId={id} clientId={t.client_id} phone={client?.whatsapp || client?.phone} />}
             {canTxn && <Button asChild variant="outline"><Link href={`/transactions/${id}/edit`}><Pencil /> تعديل</Link></Button>}
@@ -121,6 +122,20 @@ export default async function TransactionPage({ params }: { params: Promise<{ id
                 <div className="sm:col-span-2"><dt className="text-sm text-ink-3">ملاحظات المكتب</dt><dd className="mt-1 whitespace-pre-wrap rounded-ctl bg-bg p-3 text-sm text-ink-2">{notes.internal_notes}</dd></div>
               )}
             </dl>
+          </Card>
+
+          <Card>
+            <CardHeader title="بنود المعاملة (ما تتضمنه الفاتورة)" action={canTxn ? <Button asChild size="sm" variant="ghost"><Link href={`/transactions/${id}/edit`}>تعديل البنود</Link></Button> : undefined} />
+            <ul className="divide-y divide-line">
+              {(lineItems ?? []).map((i) => (
+                <li key={i.id} className="flex flex-wrap items-center gap-3 px-4 py-3 text-[15px]">
+                  <div className="min-w-0 flex-1"><div className="font-medium">{i.description}</div>{i.description_en && <div className="text-sm text-ink-3" dir="ltr" style={{ textAlign: "start" }}>{i.description_en}</div>}<div className="text-xs text-ink-3">الكمية <span className="num">{Number(i.qty)}</span> × <span className="num">{money(Number(i.govt_unit) + Number(i.fee_unit), "")}</span></div></div>
+                  <span className="font-semibold num">{money(Number(i.qty) * (Number(i.govt_unit) + Number(i.fee_unit)))}</span>
+                </li>
+              ))}
+            </ul>
+            {t.quote_id && <div className="border-t border-line px-4 py-2.5 text-sm"><Link className="text-navy underline" href={`/quotes/${t.quote_id}`}>هذه المعاملة جاءت من عرض سعر، افتح العرض</Link></div>}
+            {t.invoice_no && <div className="border-t border-line px-4 py-2.5 text-sm text-ink-2">رقم الفاتورة الرسمي: <b className="num">{t.invoice_no}</b></div>}
           </Card>
 
           <Card>

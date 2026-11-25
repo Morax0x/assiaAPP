@@ -1,117 +1,61 @@
 import { notFound } from "next/navigation";
 import { requireSession } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import { LogoMark } from "@/components/layout/logo";
-import { PrintButton } from "./print-button";
-import { fmtDate, money } from "@/lib/utils";
-import { METHOD_LABEL } from "@/lib/permissions";
+import { DocumentSheet, type Lang, type SheetData } from "@/components/documents/document-sheet";
+import { PrintToolbar } from "@/components/documents/print-toolbar";
 
 export const metadata = { title: "فاتورة" };
+export const dynamic = "force-dynamic";
 
-export default async function PrintPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ type?: string }> }) {
+const METHOD = {
+  cash: { ar: "كاش", en: "Cash" }, bank_card: { ar: "بطاقة", en: "Card" },
+  bank_transfer: { ar: "تحويل بنكي", en: "Bank Transfer" }, cheque: { ar: "شيك", en: "Cheque" },
+} as Record<string, { ar: string; en: string }>;
+const STATUS = {
+  paid: { ar: "مدفوعة بالكامل", en: "PAID" }, partial: { ar: "مدفوعة جزئياً", en: "PARTIALLY PAID" }, unpaid: { ar: "غير مدفوعة", en: "UNPAID" },
+} as Record<string, { ar: string; en: string }>;
+
+export default async function PrintPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ type?: string; lang?: string }> }) {
   const { id } = await params;
-  const { type } = await searchParams;
-  const isReceipt = type === "receipt";
-  await requireSession();
+  const sp = await searchParams;
+  const kind = sp.type === "receipt" ? "receipt" : "invoice";
+  const lang: Lang = sp.lang === "ar" || sp.lang === "en" ? sp.lang : "both";
+  const s = await requireSession();
   const supabase = await createClient();
-  const [{ data: t }, { data: os }, { data: pays }] = await Promise.all([
+
+  // First time an invoice is opened by someone who can write, give it its official number.
+  if (kind === "invoice" && s.perms.has("txn.write")) await supabase.rpc("issue_invoice", { p_txn: id });
+
+  const [{ data: t }, { data: os }, { data: pays }, { data: items }] = await Promise.all([
     supabase.from("transactions_list").select("*").eq("id", id).maybeSingle(),
     supabase.from("office_settings").select("*").single(),
     supabase.rpc("transaction_payments", { p_txn: id }),
+    supabase.from("transaction_items").select("*").eq("transaction_id", id).order("position"),
   ]);
-  if (!t) notFound();
-  const cur = os?.currency ?? "AED";
-  const payments = ((pays ?? []) as { id: string; amount: number; method: string; occurred_at: string; voided: boolean; reference_no: string | null }[]).filter((p) => !p.voided);
-  const docNo = `${isReceipt ? "RCT" : "INV"}-${t.ref_no.replace("TRX-", "")}`;
+  if (!t || !os) notFound();
+
+  const payments = ((pays ?? []) as { amount: number; method: string; occurred_at: string; voided: boolean; reference_no: string | null }[]).filter((p) => !p.voided);
+  const methods = [...new Set(payments.map((p) => p.method))].map((m) => METHOD[m]).filter(Boolean);
+  const rows = (items ?? []).length
+    ? (items ?? []).map((i) => ({ date: i.item_date ?? t.created_at, description: i.description, description_en: i.description_en, qty: Number(i.qty), price: Number(i.govt_unit) + Number(i.fee_unit) }))
+    : [{ date: t.created_at, description: t.title, description_en: null, qty: 1, price: Number(t.govt_fees) + Number(t.office_fee) }];
+
+  const invNo = t.invoice_no ? String(t.invoice_no) : null;
+  const data: SheetData = {
+    kind, lang, office: os, party: { name: t.client_name, phone: t.client_phone },
+    number: kind === "receipt" ? `R-${String(t.ref_no).replace("TRX-", "")}` : invNo ?? t.ref_no,
+    date: kind === "invoice" ? (t.invoice_date ?? new Date().toISOString()) : new Date().toISOString(),
+    items: rows, discount: Number(t.discount), total: Number(t.total), paid: Number(t.paid), remaining: Number(t.remaining),
+    paymentStatus: STATUS[t.payment_status], methods: methods.length ? { ar: methods.map((m) => m.ar).join("، "), en: methods.map((m) => m.en).join(", ") } : null,
+    payments: payments.map((p) => ({ date: p.occurred_at, method: METHOD[p.method] ?? { ar: p.method, en: p.method }, ref: p.reference_no, amount: Number(p.amount) })),
+    draft: kind === "invoice" && !invNo,
+  };
 
   return (
-    <div className="min-h-dvh bg-bg py-6 print:bg-white print:py-0">
-      <div className="no-print mx-auto mb-4 flex max-w-3xl items-center justify-between px-3">
-        <span className="text-sm text-ink-3">للحفظ كملف PDF اختر «حفظ كـ PDF» من نافذة الطباعة</span>
-        <PrintButton />
-      </div>
-      <div className="print-sheet mx-auto max-w-3xl rounded-card border border-line bg-surface p-8 text-[13px] leading-6">
-        <header className="flex items-start justify-between border-b-2 border-navy pb-5">
-          <div className="flex items-center gap-3">
-            <LogoMark className="size-12" />
-            <div>
-              <div className="text-lg font-bold text-navy">{os?.office_name ?? "المكتب"}</div>
-              {os?.address && <div className="text-xs text-ink-2">{os.address}</div>}
-              {os?.phone && <div className="text-xs text-ink-2 num">{os.phone}</div>}
-              {os?.tax_number && <div className="text-xs text-ink-2">الرقم الضريبي: <span className="num">{os.tax_number}</span></div>}
-            </div>
-          </div>
-          <div className="text-end">
-            <div className="text-xl font-bold">{isReceipt ? "إيصال استلام" : "فاتورة"}</div>
-            <div className="mt-1 text-xs text-ink-2">الرقم: <span className="num font-medium">{docNo}</span></div>
-            <div className="text-xs text-ink-2">التاريخ: <span className="num">{fmtDate(new Date())}</span></div>
-          </div>
-        </header>
-
-        <section className="grid grid-cols-2 gap-6 py-5">
-          <div>
-            <div className="text-xs text-ink-3">العميل</div>
-            <div className="text-base font-semibold">{t.client_name}</div>
-            {t.client_phone && <div className="text-xs text-ink-2 num">{t.client_phone}</div>}
-          </div>
-          <div className="text-end">
-            <div className="text-xs text-ink-3">المعاملة</div>
-            <div className="font-medium">{t.title}</div>
-            <div className="text-xs text-ink-2">المرجع: <span className="num">{t.ref_no}</span></div>
-          </div>
-        </section>
-
-        {!isReceipt ? (
-          <table className="w-full border-collapse">
-            <thead>
-              <tr className="bg-navy text-white">
-                <th className="px-3 py-2 text-start font-medium">البيان</th>
-                <th className="px-3 py-2 text-end font-medium">المبلغ ({cur})</th>
-              </tr>
-            </thead>
-            <tbody>
-              {Number(t.govt_fees) > 0 && <tr className="border-b border-line"><td className="px-3 py-2.5">رسوم حكومية</td><td className="px-3 py-2.5 text-end num">{money(t.govt_fees, "").trim()}</td></tr>}
-              {Number(t.office_fee) > 0 && <tr className="border-b border-line"><td className="px-3 py-2.5">أتعاب خدمة</td><td className="px-3 py-2.5 text-end num">{money(t.office_fee, "").trim()}</td></tr>}
-              {Number(t.discount) > 0 && <tr className="border-b border-line"><td className="px-3 py-2.5">خصم</td><td className="px-3 py-2.5 text-end num">−{money(t.discount, "").trim()}</td></tr>}
-            </tbody>
-            <tfoot>
-              <tr><td className="px-3 pt-4 text-base font-bold">الإجمالي</td><td className="px-3 pt-4 text-end text-base font-bold num">{money(t.total, cur)}</td></tr>
-              <tr><td className="px-3 pt-1 text-ok">المدفوع</td><td className="px-3 pt-1 text-end text-ok num">{money(t.paid, cur)}</td></tr>
-              <tr><td className="px-3 pt-1 font-semibold">المتبقي</td><td className="px-3 pt-1 text-end font-semibold num">{money(t.remaining, cur)}</td></tr>
-            </tfoot>
-          </table>
-        ) : (
-          <table className="w-full border-collapse">
-            <thead>
-              <tr className="bg-navy text-white">
-                <th className="px-3 py-2 text-start font-medium">التاريخ</th>
-                <th className="px-3 py-2 text-start font-medium">وسيلة الدفع</th>
-                <th className="px-3 py-2 text-start font-medium">رقم المرجع</th>
-                <th className="px-3 py-2 text-end font-medium">المبلغ ({cur})</th>
-              </tr>
-            </thead>
-            <tbody>
-              {payments.map((p) => (
-                <tr key={p.id} className="border-b border-line">
-                  <td className="px-3 py-2.5 num">{fmtDate(p.occurred_at)}</td>
-                  <td className="px-3 py-2.5">{METHOD_LABEL[p.method] ?? ""}</td>
-                  <td className="px-3 py-2.5 num">{p.reference_no ?? "—"}</td>
-                  <td className="px-3 py-2.5 text-end num">{money(p.amount, "").trim()}</td>
-                </tr>
-              ))}
-            </tbody>
-            <tfoot>
-              <tr><td colSpan={3} className="px-3 pt-4 text-base font-bold">إجمالي المستلم</td><td className="px-3 pt-4 text-end text-base font-bold num">{money(t.paid, cur)}</td></tr>
-              <tr><td colSpan={3} className="px-3 pt-1">المتبقي على العميل</td><td className="px-3 pt-1 text-end num">{money(t.remaining, cur)}</td></tr>
-            </tfoot>
-          </table>
-        )}
-
-        <footer className="mt-16 flex items-end justify-between text-xs text-ink-2">
-          <div>{os?.invoice_footer || "شكراً لتعاملكم معنا"}</div>
-          <div className="w-48 border-t border-ink-3 pt-1 text-center">التوقيع / الختم</div>
-        </footer>
-      </div>
+    <div className="min-h-dvh bg-[#d9dde3] py-5 print:bg-white print:py-0">
+      <style>{"@page{size:A4;margin:0}"}</style>
+      <PrintToolbar lang={lang} basePath={`/print/${id}`} extra={kind === "receipt" ? "type=receipt" : ""} backHref={`/transactions/${id}`} />
+      <DocumentSheet d={data} />
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import {
-  LayoutDashboard, FileText, Users, BellRing, Landmark, Settings, WalletCards, FolderOpen, ScanSearch, BarChart3, CircleHelp,
+  LayoutDashboard, FileText, Users, BellRing, Landmark, Settings, WalletCards, FolderOpen, ScanSearch, BarChart3, CircleHelp, Tags, FileSpreadsheet,
 } from "lucide-react";
 import type { PermKey } from "@/lib/permissions";
 
@@ -26,6 +26,8 @@ export const NAV: NavItem[] = [
   { href: "/transactions", label: "المعاملات", icon: FileText, group: "main", primaryMobile: true },
   { href: "/clients", label: "العملاء", icon: Users, group: "main", primaryMobile: true },
   { href: "/documents", label: "المستندات", icon: FolderOpen, group: "main", primaryMobile: true },
+  { href: "/quotes", label: "عروض الأسعار", icon: FileSpreadsheet, group: "main" },
+  { href: "/services", label: "الخدمات والأسعار", icon: Tags, group: "main" },
   { href: "/receivables", label: "المبالغ المتبقية على العملاء", icon: WalletCards, group: "money" },
   { href: "/treasury", label: "الصندوق والبطاقة", icon: Landmark, group: "money", perm: "treasury.view" },
   { href: "/reports", label: "التقارير والأرباح", icon: BarChart3, group: "money", perm: "reports.view" },

@@ -6,16 +6,14 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAction } from "@/lib/auth";
 import { safe, formObj, emptyToNull, type Result } from "@/lib/action";
+import { itemTotals, parseItems, titleFromItems } from "@/lib/items";
 
 const num = (label: string) => z.coerce.number({ message: `${label} غير صالح` }).min(0, `${label} لا يمكن أن يكون سالباً`);
 
 const txnSchema = z.object({
   client_id: z.string().uuid("اختر العميل"),
-  title: z.string().min(2, "عنوان المعاملة مطلوب"),
-  template_id: z.string().optional(),
+  title: z.string().optional(),
   assignee_id: z.string().optional(),
-  govt_fees: num("الرسوم الحكومية").default(0),
-  office_fee: num("أتعاب المكتب").default(0),
   discount: num("الخصم").default(0),
   due_date: z.string().optional(),
   status: z.enum(["new", "in_progress", "awaiting_docs", "completed", "cancelled"]).default("new"),
@@ -34,23 +32,31 @@ const paySchema = z.object({
 });
 
 function parseTxn(fd: FormData) {
-  const v = txnSchema.parse(formObj(fd));
-  if (v.discount > v.govt_fees + v.office_fee) throw new Error("الخصم أكبر من إجمالي المعاملة");
+  const o = formObj(fd);
+  const v = txnSchema.parse(o);
+  const items = parseItems(o.items_json);
+  const { govt, fee } = itemTotals(items);
+  if (v.discount > govt + fee) throw new Error("الخصم أكبر من إجمالي المعاملة");
+  const title = (v.title && v.title.trim().length >= 2 ? v.title.trim() : titleFromItems(items));
   return {
-    client_id: v.client_id, title: v.title,
-    template_id: emptyToNull(v.template_id), assignee_id: emptyToNull(v.assignee_id),
-    govt_fees: v.govt_fees, office_fee: v.office_fee, discount: v.discount,
-    due_date: emptyToNull(v.due_date), status: v.status, internal_notes: emptyToNull(v.internal_notes),
+    items,
+    row: {
+      client_id: v.client_id, title, assignee_id: emptyToNull(v.assignee_id),
+      govt_fees: govt, office_fee: fee, discount: v.discount,
+      due_date: emptyToNull(v.due_date), status: v.status, internal_notes: emptyToNull(v.internal_notes),
+    },
   };
 }
 
 export async function createTransaction(fd: FormData): Promise<Result<{ id: string }>> {
   return safe(async () => {
     const s = await requireAction("txn.write");
-    const row = parseTxn(fd);
+    const { row, items } = parseTxn(fd);
     const supabase = await createClient();
     const { data, error } = await supabase.from("transactions").insert({ ...row, created_by: s.userId }).select("id").single();
     if (error) throw error;
+    const { error: ie } = await supabase.rpc("set_transaction_items", { p_txn: data.id, p_items: items });
+    if (ie) throw ie;
 
     const initial = formObj(fd);
     if (initial.init_amount && Number(initial.init_amount) > 0) {
@@ -73,10 +79,12 @@ export async function createTransactionAndGo(fd: FormData): Promise<Result<never
 export async function updateTransaction(id: string, fd: FormData): Promise<Result> {
   return safe(async () => {
     await requireAction("txn.write");
-    const row = parseTxn(fd);
+    const { row, items } = parseTxn(fd);
     const supabase = await createClient();
     const { error } = await supabase.from("transactions").update(row).eq("id", id);
     if (error) throw error;
+    const { error: ie } = await supabase.rpc("set_transaction_items", { p_txn: id, p_items: items });
+    if (ie) throw ie;
     revalidatePath(`/transactions/${id}`);
     revalidatePath("/transactions");
   });

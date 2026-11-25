@@ -185,3 +185,54 @@ begin
 
   perform set_config('request.jwt.claim.sub', '', false);
 end $$;
+
+-- ---- services prices, line items and quotations for the demo ----
+update service_templates set default_govt_fee = 1500, default_office_fee = 400 where name = 'تجديد رخصة تجارية';
+update service_templates set default_govt_fee = 650, default_office_fee = 200 where name = 'تجديد إقامة';
+update service_templates set default_govt_fee = 370, default_office_fee = 130 where name = 'إصدار هوية إماراتية';
+update service_templates set default_govt_fee = 8500, default_office_fee = 1500 where name = 'إصدار رخصة تجارية';
+update service_templates set default_govt_fee = 300, default_office_fee = 200 where name = 'تصديق عقود';
+update service_templates set default_govt_fee = 450, default_office_fee = 150 where name = 'نقل ملكية مركبة';
+update service_templates set default_govt_fee = 1200, default_office_fee = 350 where name = 'عضوية الغرفة';
+update service_templates set default_govt_fee = 0, default_office_fee = 800 where name = 'تسجيل ضريبة القيمة المضافة';
+update service_templates set default_govt_fee = 600, default_office_fee = 150 where name = 'تأشيرة زيارة / تمديد';
+
+insert into transaction_items(transaction_id, position, description, qty, govt_unit, fee_unit, item_date)
+select t.id, 0, t.title, 1, t.govt_fees, t.office_fee, t.created_at::date
+from transactions t where not exists (select 1 from transaction_items i where i.transaction_id = t.id);
+
+do $$
+declare t4 uuid; t8 uuid; q1 uuid; q2 uuid; q3 uuid; t12 uuid;
+begin
+  select id into t4 from transactions where title = 'تأسيس رخصة تجارية جديدة';
+  delete from transaction_items where transaction_id = t4;
+  insert into transaction_items(transaction_id, position, description, description_en, qty, govt_unit, fee_unit, item_date) values
+   (t4, 0, 'رسوم الدائرة الاقتصادية', 'Economic Department Fees', 1, 6000, 0, current_date - 20),
+   (t4, 1, 'رسوم الموافقة المبدئية', 'Initial Approval Fees', 1, 2500, 0, current_date - 20),
+   (t4, 2, 'أتعاب تأسيس الشركة', 'Company Setup Service Fee', 1, 0, 1500, current_date - 20);
+  select id into t8 from transactions where title = 'شهادة دفاع مدني';
+  delete from transaction_items where transaction_id = t8;
+  insert into transaction_items(transaction_id, position, description, description_en, qty, govt_unit, fee_unit, item_date) values
+   (t8, 0, 'رسوم شهادة الدفاع المدني', 'Civil Defense Certificate Fee', 1, 900, 0, current_date - 9),
+   (t8, 1, 'أتعاب المتابعة', 'Follow-up Service Fee', 1, 0, 300, current_date - 9);
+
+  perform set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000003', false);
+  insert into quotes(client_id, status, valid_until, lang, notes, created_by) values
+    ((select id from clients where name like 'شركة الخليج%'), 'sent', current_date + 10, 'both', 'العرض شامل رسوم الجهات الحكومية.', '00000000-0000-4000-8000-000000000003') returning id into q1;
+  insert into quote_items(quote_id, position, description, description_en, qty, govt_unit, fee_unit) values
+    (q1, 0, 'تجديد رخصة تجارية', 'Trade License Renewal', 1, 2200, 500),
+    (q1, 1, 'تجديد إقامة موظفين', 'Employees Residence Renewal', 3, 650, 200);
+  insert into quotes(client_name, client_phone, status, valid_until, lang, created_by) values
+    ('سلطان المزروعي', '0551234567', 'draft', current_date + 14, 'ar', '00000000-0000-4000-8000-000000000003') returning id into q2;
+  insert into quote_items(quote_id, position, description, qty, govt_unit, fee_unit) values (q2, 0, 'إصدار رخصة تجارية', 1, 8500, 1500);
+  select id into t12 from transactions where title = 'إضافة شريك';
+  insert into quotes(client_id, status, valid_until, lang, transaction_id, created_by) values
+    ((select id from clients where name like 'شركة النور%'), 'accepted', current_date - 2, 'both', t12, '00000000-0000-4000-8000-000000000002') returning id into q3;
+  insert into quote_items(quote_id, position, description, description_en, qty, govt_unit, fee_unit) values (q3, 0, 'إضافة شريك', 'Add Partner', 1, 1800, 700);
+  update transactions set quote_id = q3 where id = t12;
+  perform set_config('request.jwt.claim.sub', '', false);
+end $$;
+
+update office_settings set email = 'assia_ae@yahoo.com', website = 'assia.ae', bank_name = 'Abu Dhabi Islamic Bank',
+  bank_account_name = 'Assia Business Services', iban = 'AE220500000000019323724', bank_account_no = '19323724',
+  quote_terms = 'الأسعار صالحة للمدة المذكورة وقابلة للتغيير حسب رسوم الجهات الحكومية. يبدأ العمل بعد استلام الدفعة المقدمة.';

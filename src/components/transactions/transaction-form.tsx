@@ -6,10 +6,11 @@ import { ActionForm } from "@/components/ui/action-form";
 import { Field, Input, Select, Textarea } from "@/components/ui/form";
 import { TXN_STATUS_LABEL, METHOD_LABEL } from "@/lib/permissions";
 import { money } from "@/lib/utils";
+import { ItemsEditor, type ItemInit, type ServiceOpt, type Totals } from "@/components/items/items-editor";
 import type { Result } from "@/lib/action";
 
 export type Opt = { id: string; name: string };
-export type TemplateOpt = Opt & { default_govt_fee: number; default_office_fee: number };
+export type TemplateOpt = ServiceOpt;
 export type AccountOpt = Opt & { kind: string };
 export type TxnInitial = {
   client_id?: string; title?: string; template_id?: string | null; assignee_id?: string | null;
@@ -33,27 +34,18 @@ function Step({ n, title, hint, children }: { n: number; title: string; hint?: s
 }
 
 export function TransactionForm({
-  action, clients, templates, staff, accounts, initial = {}, mode, submitLabel,
+  action, clients, templates, staff, accounts, initial = {}, mode, submitLabel, initialItems,
 }: {
   action: (fd: FormData) => Promise<Result<unknown>>;
   clients: Opt[]; templates: TemplateOpt[]; staff: Opt[]; accounts?: AccountOpt[];
-  initial?: TxnInitial; mode: "new" | "edit"; submitLabel: string;
+  initial?: TxnInitial; mode: "new" | "edit"; submitLabel: string; initialItems?: ItemInit[];
 }) {
-  const [govt, setGovt] = React.useState(String(initial.govt_fees ?? 0));
-  const [fee, setFee] = React.useState(String(initial.office_fee ?? 0));
+  const [totals, setTotals] = React.useState<Totals>({ govt: 0, fee: 0, total: 0 });
   const [disc, setDisc] = React.useState(String(initial.discount ?? 0));
-  const [title, setTitle] = React.useState(initial.title ?? "");
   const [acc, setAcc] = React.useState(accounts?.[0]?.id ?? "");
   const [method, setMethod] = React.useState("cash");
-  const total = Math.max(0, Number(govt || 0) + Number(fee || 0) - Number(disc || 0));
+  const total = Math.max(0, totals.total - Number(disc || 0));
 
-  function pickTemplate(id: string) {
-    const t = templates.find((x) => x.id === id);
-    if (!t) return;
-    setGovt(String(t.default_govt_fee));
-    setFee(String(t.default_office_fee));
-    if (!title) setTitle(t.name);
-  }
   function pickAccount(id: string) {
     setAcc(id);
     setMethod(accounts?.find((a) => a.id === id)?.kind === "bank" ? "bank_card" : "cash");
@@ -70,14 +62,8 @@ export function TransactionForm({
             </Select>
             <Link href="/clients/new" className="mt-1.5 inline-block text-sm font-medium text-navy hover:underline">العميل غير موجود؟ أضفه أولاً</Link>
           </Field>
-          <Field label="نوع الخدمة" hint="اختر الخدمة لتمتلئ المبالغ تلقائياً، أو اتركه فارغاً واكتب بنفسك">
-            <Select name="template_id" defaultValue={initial.template_id ?? ""} onChange={(e) => pickTemplate(e.target.value)}>
-              <option value="">— بدون —</option>
-              {templates.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
-            </Select>
-          </Field>
-          <Field label="وصف المعاملة" className="sm:col-span-2">
-            <Input name="title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="مثال: تجديد رخصة تجارية" required />
+          <Field label="عنوان المعاملة (اختياري)" hint="إن تركته فارغاً يُكتب تلقائياً من أول بند" className="sm:col-span-2">
+            <Input name="title" defaultValue={initial.title ?? ""} placeholder="مثال: تجديد رخصة شركة النور" />
           </Field>
           {mode === "edit" && (
             <Field label="حالة المعاملة">
@@ -89,17 +75,10 @@ export function TransactionForm({
         </div>
       </Step>
 
-      <Step n={2} title="كم المبلغ؟" hint="الرسوم الحكومية تدفعها عن العميل وليست ربحاً، أما أتعاب المكتب فهي ربحك.">
-        <div className="grid gap-3 sm:grid-cols-2">
-          <Field label="الرسوم الحكومية (التي تُدفع للجهة)">
-            <Input name="govt_fees" type="number" step="0.01" min="0" value={govt} onChange={(e) => setGovt(e.target.value)} dir="ltr" className="text-start" inputMode="decimal" />
-          </Field>
-          <Field label="أتعاب المكتب (ربحك)">
-            <Input name="office_fee" type="number" step="0.01" min="0" value={fee} onChange={(e) => setFee(e.target.value)} dir="ltr" className="text-start" inputMode="decimal" />
-          </Field>
-        </div>
+      <Step n={2} title="ما هي الخدمات والمبالغ؟" hint="اختر الخدمة من القائمة فتمتلئ الأسعار تلقائياً، أو أضف بنداً يدوياً. الرسوم الحكومية تدفعها عن العميل وليست ربحاً، أما أتعاب المكتب فهي ربحك.">
+        <ItemsEditor services={templates} initial={initialItems} onTotals={setTotals} />
         <div className="mt-3 flex items-center justify-between rounded-ctl bg-navy-soft px-4 py-3">
-          <span className="text-[15px] font-medium text-navy">المطلوب من العميل</span>
+          <span className="text-[15px] font-medium text-navy">المطلوب من العميل{Number(disc) > 0 ? " (بعد الخصم)" : ""}</span>
           <span className="text-xl font-bold text-navy num">{money(total)}</span>
         </div>
       </Step>
