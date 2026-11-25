@@ -12,7 +12,7 @@ export default async function NewTransactionPage({ searchParams }: { searchParam
   const { clients, templates, staff, accounts } = await loadTxnLookups();
   return (
     <div className="mx-auto max-w-3xl">
-      <PageHeader title="معاملة جديدة" description="الرقم المرجعي يُولَّد تلقائياً عند الحفظ" />
+      <PageHeader title="معاملة جديدة" description="أجب عن الخطوات بالترتيب. رقم المعاملة يُكتب تلقائياً عند الحفظ." back={{ href: "/transactions", label: "رجوع للمعاملات" }} />
       <Card className="p-4">
         <TransactionForm
           mode="new" action={createTransactionAndGo} submitLabel="إنشاء المعاملة"

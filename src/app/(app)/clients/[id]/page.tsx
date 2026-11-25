@@ -38,6 +38,7 @@ export default async function ClientPage({ params }: { params: Promise<{ id: str
   return (
     <>
       <PageHeader
+        back={{ href: "/clients", label: "رجوع للعملاء" }}
         title={c.name}
         description={c.kind === "company" ? "شركة / منشأة" : "فرد"}
         actions={

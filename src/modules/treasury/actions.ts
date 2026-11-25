@@ -42,10 +42,11 @@ export async function addTransfer(fd: FormData): Promise<Result> {
     const v = z.object({
       from: z.string().uuid("اختر حساب المصدر"), to: z.string().uuid("اختر حساب الوجهة"),
       amount: z.coerce.number().positive("المبلغ يجب أن يكون أكبر من صفر"), note: z.string().optional(),
+      occurred_at: z.string().optional(), reference_no: z.string().max(80).optional(),
     }).parse(o);
     if (v.from === v.to) throw new Error("اختر حسابين مختلفين");
     const supabase = await createClient();
-    const { error } = await supabase.rpc("record_internal_transfer", { p_from: v.from, p_to: v.to, p_amount: v.amount, p_note: emptyToNull(v.note) });
+    const { error } = await supabase.rpc("record_internal_transfer", { p_from: v.from, p_to: v.to, p_amount: v.amount, p_note: emptyToNull(v.note), p_occurred_at: emptyToNull(v.occurred_at), p_reference: emptyToNull(v.reference_no) });
     if (error) throw error;
     done();
   });

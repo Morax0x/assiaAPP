@@ -21,7 +21,8 @@ export default async function TransactionsPage() {
   return (
     <>
       <PageHeader
-        title="المعاملات والفواتير"
+        title="المعاملات"
+        description="كل معاملات المكتب. اضغط على أي معاملة لفتحها وتسجيل الدفعات وطباعة الفاتورة."
         actions={
           <>
             {s.perms.has("txn.write") && <ImportDialog />}

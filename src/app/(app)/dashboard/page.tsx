@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { AlertTriangle, ArrowLeft, Banknote, CircleCheck, CreditCard, FileClock, FilePlus2, Receipt, ScanSearch, Upload, UserPlus, WalletCards } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Check, Circle, ChevronLeft, Banknote, CircleCheck, CreditCard, FileClock, FilePlus2, Receipt, ScanSearch, Upload, UserPlus, WalletCards } from "lucide-react";
 import { Card, CardHeader, Empty, PageHeader } from "@/components/ui/card";
 import { Badge, STATUS_TONE } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -32,6 +32,24 @@ export default async function DashboardPage() {
       .in("status", ["new", "in_progress", "awaiting_docs"]).not("due_date", "is", null).lte("due_date", soon).order("due_date").limit(5),
   ]);
   const st = (stats ?? {}) as Stats;
+  const [{ count: clientCount }, { count: txnCount }, { data: owing }] = await Promise.all([
+    supabase.from("clients").select("id", { count: "exact", head: true }).is("deleted_at", null),
+    supabase.from("transactions").select("id", { count: "exact", head: true }).is("deleted_at", null),
+    supabase.from("transactions_list").select("remaining").neq("status", "cancelled").gt("remaining", 0),
+  ]);
+  const owedTotal = (owing ?? []).reduce((a, r) => a + Number(r.remaining), 0);
+  const todo: { text: string; href: string; tone: "bad" | "warn" | "navy" }[] = [];
+  if (Number(st.urgent_docs) > 0) todo.push({ text: `${st.urgent_docs} مستند منتهٍ أو على وشك الانتهاء ويحتاج تجديداً`, href: "/alerts", tone: "bad" });
+  if ((attention?.length ?? 0) > 0) todo.push({ text: `${attention!.length} معاملة متأخرة أو موعد تسليمها قريب`, href: "/transactions", tone: "warn" });
+  if (owedTotal > 0) todo.push({ text: `على العملاء مبلغ متبقٍ ${money(owedTotal)} (${owing!.length} معاملة)`, href: "/receivables", tone: "navy" });
+  const canStart = s.perms.has("clients.write") || s.perms.has("txn.write");
+  const steps = [
+    { done: (clientCount ?? 0) > 0, text: "أضف أول عميل", href: "/clients/new", show: s.perms.has("clients.write") },
+    { done: (txnCount ?? 0) > 0, text: "أنشئ أول معاملة", href: "/transactions/new", show: s.perms.has("txn.write") },
+    { done: false, text: "ارفع مستنداً وحدّد تاريخ انتهائه ليصلك تنبيه التجديد", href: "/documents/new", show: s.perms.has("docs.write") },
+    { done: false, text: "اقرأ الشرح المبسّط لأهم المهام", href: "/help", show: true },
+  ].filter((x) => x.show);
+  const showStart = canStart && ((clientCount ?? 0) === 0 || (txnCount ?? 0) === 0);
   const series = ((chart.data ?? []) as { month: string; income: number; govt_paid: number; expenses: number; office_net: number }[]).map((m) => ({
     month: new Intl.DateTimeFormat("ar-AE-u-nu-latn", { month: "short" }).format(new Date(m.month)),
     income: Number(m.income), outgoing: Number(m.govt_paid) + Number(m.expenses), net: Number(m.office_net),
@@ -47,8 +65,8 @@ export default async function DashboardPage() {
           s.perms.has("clients.write") && { href: "/clients/new", label: "عميل جديد", icon: UserPlus },
           s.perms.has("docs.write") && { href: "/documents/new", label: "رفع مستند", icon: Upload },
           s.perms.has("treasury.write") && { href: "/treasury?new=expense", label: "تسجيل مصروف", icon: Receipt },
-          { href: "/receivables", label: "المستحقات", icon: WalletCards },
-          { href: "/search", label: "بحث ذكي", icon: ScanSearch },
+          { href: "/receivables", label: "المبالغ المتبقية", icon: WalletCards },
+          { href: "/search", label: "بحث بالصوت", icon: ScanSearch },
         ].filter(Boolean) as { href: string; label: string; icon: typeof Upload; main?: boolean }[]).map((a) => (
           <Link
             key={a.href} href={a.href}
@@ -59,6 +77,47 @@ export default async function DashboardPage() {
           </Link>
         ))}
       </nav>
+
+      {showStart && (
+        <Card className="mb-5 border-navy/40 bg-navy-soft/60">
+          <div className="p-4">
+            <h2 className="text-base font-bold text-navy">ابدأ من هنا</h2>
+            <p className="mt-1 text-sm text-ink-2">أربع خطوات بسيطة وتصبح جاهزاً للعمل.</p>
+            <ol className="mt-3 space-y-2">
+              {steps.map((x, i) => (
+                <li key={x.text}>
+                  <Link href={x.href} className="flex min-h-12 items-center gap-3 rounded-ctl bg-surface px-3 py-2 text-[15px] hover:border-navy">
+                    <span className={`flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-bold ${x.done ? "bg-ok text-white" : "border border-line-strong text-ink-3"}`}>
+                      {x.done ? <Check className="size-4" strokeWidth={3} /> : i + 1}
+                    </span>
+                    <span className={`flex-1 ${x.done ? "text-ink-3 line-through" : "font-medium"}`}>{x.text}</span>
+                    <ChevronLeft className="size-4 text-ink-3" />
+                  </Link>
+                </li>
+              ))}
+            </ol>
+          </div>
+        </Card>
+      )}
+
+      <Card className="mb-5">
+        <CardHeader title="تحتاج انتباهك اليوم" />
+        {todo.length === 0 ? (
+          <div className="flex items-center gap-3 px-4 py-4 text-[15px] text-ok"><CircleCheck className="size-6 shrink-0" strokeWidth={1.75} /> كل شيء على ما يرام، لا يوجد شيء عاجل اليوم.</div>
+        ) : (
+          <ul className="divide-y divide-line">
+            {todo.map((x) => (
+              <li key={x.href}>
+                <Link href={x.href} className="flex min-h-14 items-center gap-3 px-4 py-3 text-[15px] hover:bg-bg">
+                  <Circle className={`size-3 shrink-0 fill-current ${x.tone === "bad" ? "text-bad" : x.tone === "warn" ? "text-warn" : "text-navy"}`} />
+                  <span className="flex-1 font-medium">{x.text}</span>
+                  <span className="flex items-center gap-1 text-sm font-medium text-navy">افتح <ChevronLeft className="size-4" /></span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Card>
 
       <div className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Kpi icon={Banknote} label="رصيد الكاش" value={st.cash_balance === null || st.cash_balance === undefined ? null : money(st.cash_balance)} />

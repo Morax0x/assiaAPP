@@ -3,6 +3,7 @@ import { z } from "zod";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAction } from "@/lib/auth";
 import { safe, formObj, emptyToNull, type Result } from "@/lib/action";
 
@@ -24,8 +25,12 @@ const txnSchema = z.object({
 const paySchema = z.object({
   amount: z.coerce.number().positive("المبلغ يجب أن يكون أكبر من صفر"),
   account_id: z.string().uuid("اختر الحساب"),
-  method: z.enum(["cash", "bank_card", "bank_transfer"]),
+  method: z.enum(["cash", "bank_card", "bank_transfer", "cheque"]),
   note: z.string().optional(),
+  occurred_at: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "تاريخ غير صالح").optional().or(z.literal("")),
+  reference_no: z.string().max(80).optional(),
+  paid_by: z.string().max(120).optional(),
+  receipt_path: z.string().optional(),
 });
 
 function parseTxn(fd: FormData) {
@@ -94,7 +99,10 @@ export async function recordPayment(txnId: string, fd: FormData): Promise<Result
     await requireAction("txn.write");
     const p = paySchema.parse(formObj(fd));
     const supabase = await createClient();
-    const { error } = await supabase.rpc("record_client_payment", { p_txn: txnId, p_account: p.account_id, p_amount: p.amount, p_method: p.method, p_note: emptyToNull(p.note) });
+    const { error } = await supabase.rpc("record_client_payment", {
+      p_txn: txnId, p_account: p.account_id, p_amount: p.amount, p_method: p.method, p_note: emptyToNull(p.note),
+      p_occurred_at: emptyToNull(p.occurred_at), p_reference: emptyToNull(p.reference_no), p_receipt: emptyToNull(p.receipt_path), p_paid_by: emptyToNull(p.paid_by),
+    });
     if (error) throw error;
     revalidatePath(`/transactions/${txnId}`);
     revalidatePath("/transactions");
@@ -109,7 +117,10 @@ export async function recordGovtFee(txnId: string, fd: FormData): Promise<Result
     await requireAction("treasury.write");
     const p = paySchema.parse(formObj(fd));
     const supabase = await createClient();
-    const { error } = await supabase.rpc("record_govt_fee", { p_txn: txnId, p_account: p.account_id, p_amount: p.amount, p_method: p.method, p_note: emptyToNull(p.note) });
+    const { error } = await supabase.rpc("record_govt_fee", {
+      p_txn: txnId, p_account: p.account_id, p_amount: p.amount, p_method: p.method, p_note: emptyToNull(p.note),
+      p_occurred_at: emptyToNull(p.occurred_at), p_reference: emptyToNull(p.reference_no), p_receipt: emptyToNull(p.receipt_path),
+    });
     if (error) throw error;
     revalidatePath(`/transactions/${txnId}`);
     revalidatePath("/treasury");
@@ -126,4 +137,16 @@ export async function deleteTransaction(id: string): Promise<Result> {
   });
   if (r.ok) redirect("/transactions");
   return r;
+}
+
+export async function getPaymentReceiptUrl(entryId: string): Promise<Result<{ url: string }>> {
+  return safe(async () => {
+    await requireAction();
+    const supabase = await createClient();
+    const { data: path, error } = await supabase.rpc("payment_receipt_path", { p_entry: entryId });
+    if (error || !path) throw new Error("لا يوجد إيصال مرفق");
+    const { data, error: e2 } = await createAdminClient().storage.from("vault").createSignedUrl(path as string, 120);
+    if (e2 || !data) throw new Error("تعذر فتح الإيصال");
+    return { url: data.signedUrl };
+  });
 }

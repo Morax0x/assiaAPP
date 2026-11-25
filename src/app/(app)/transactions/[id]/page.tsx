@@ -5,8 +5,9 @@ import { Card, CardHeader, Empty, PageHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge, STATUS_TONE } from "@/components/ui/badge";
 import { ConfirmButton } from "@/components/ui/confirm-button";
-import { StatusSelect } from "@/components/transactions/status-select";
 import { PayDialog } from "@/components/transactions/pay-dialog";
+import { StatusStepper } from "@/components/transactions/status-stepper";
+import { ReceiptButton } from "@/components/transactions/receipt-button";
 import { DocumentsPanel, type DocRow } from "@/components/documents/documents-panel";
 import { ShareDialog } from "@/components/share/share-dialog";
 import { createClient } from "@/lib/supabase/server";
@@ -15,6 +16,34 @@ import { deleteTransaction, recordGovtFee, recordPayment } from "@/modules/trans
 import { LEDGER_KIND_LABEL, METHOD_LABEL, PAY_STATUS_LABEL, TXN_STATUS_LABEL } from "@/lib/permissions";
 import { fmtDate, fmtDateTime, money } from "@/lib/utils";
 
+type Pay = {
+  id: string; amount: number; method: string; occurred_at: string; description: string | null; voided: boolean;
+  reference_no: string | null; paid_by: string | null; has_receipt: boolean; recorded_by: string | null;
+};
+type Hist = { id: number; at: string; user_name: string | null; entity: string; action: string; old_data: Record<string, unknown> | null; new_data: Record<string, unknown> | null };
+
+function describe(h: Hist) {
+  const n = h.new_data, o = h.old_data;
+  if (h.entity === "transactions") {
+    if (h.action === "insert") return "سُجّلت المعاملة";
+    if (n && o && n.status !== o.status) return `تغيّرت الحالة إلى «${TXN_STATUS_LABEL[String(n.status)] ?? n.status}»`;
+    if (n?.deleted_at && !o?.deleted_at) return "حُذفت المعاملة";
+    return "عُدّلت بيانات المعاملة";
+  }
+  if (h.entity === "ledger_entries") {
+    const d = n ?? o ?? {};
+    const what = d.kind === "client_payment" ? "دفعة مستلمة" : d.kind === "govt_fee" ? "سداد رسوم حكومية" : LEDGER_KIND_LABEL[String(d.kind)] ?? "حركة";
+    const meth = d.method ? ` (${METHOD_LABEL[String(d.method)] ?? ""})` : "";
+    if (n?.voided_at && !o?.voided_at) return `أُلغيت ${what} بقيمة ${money(Number(d.amount))}`;
+    return `${what} ${money(Number(d.amount))}${meth}`;
+  }
+  if (h.entity === "documents") {
+    const d = n ?? o ?? {};
+    return h.action === "insert" ? `أُرفق مستند: ${d.title ?? ""}` : d.deleted_at ? `حُذف مستند: ${d.title ?? ""}` : `عُدّل مستند: ${d.title ?? ""}`;
+  }
+  return "تحديث";
+}
+
 export default async function TransactionPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const s = await requirePage();
@@ -22,40 +51,47 @@ export default async function TransactionPage({ params }: { params: Promise<{ id
   const { data: t } = await supabase.from("transactions_list").select("*").eq("id", id).maybeSingle();
   if (!t) notFound();
 
-  const [{ data: notes }, { data: pays }, { data: accounts }, { data: docs }, { data: types }, { data: client }] = await Promise.all([
+  const [{ data: notes }, { data: pays }, { data: accounts }, { data: docs }, { data: types }, { data: client }, { data: hist }] = await Promise.all([
     supabase.from("transactions").select("internal_notes,renewal_of_document").eq("id", id).single(),
     supabase.rpc("transaction_payments", { p_txn: id }),
     supabase.rpc("payable_accounts"),
     supabase.from("documents").select("id,group_id,title,type_id,issue_date,expiry_date,is_current,created_at,document_types(name)").eq("transaction_id", id).is("deleted_at", null).order("created_at", { ascending: false }),
     supabase.from("document_types").select("id,name").order("sort_order"),
     supabase.from("clients").select("phone,whatsapp").eq("id", t.client_id).single(),
+    supabase.rpc("transaction_history", { p_txn: id }),
   ]);
-  // Govt-fee payouts are only visible to those who can read the ledger (RLS enforces this)
-  const { data: govt } = await supabase.from("ledger_entries").select("id,amount,method,occurred_at,description,voided_at").eq("transaction_id", id).eq("kind", "govt_fee").order("occurred_at");
-
-  const { data: trail } = s.perms.has("audit.view")
-    ? await supabase.from("audit_log").select("id,at,action,entity,user_id,old_data,new_data")
-        .or(`and(entity.eq.transactions,entity_id.eq.${id}),and(entity.eq.ledger_entries,new_data->>transaction_id.eq.${id})`)
-        .order("at", { ascending: false }).limit(30)
-    : { data: null };
-  const { data: people } = trail?.length ? await supabase.from("profiles").select("id,full_name") : { data: null };
-  const who = new Map((people ?? []).map((p) => [p.id, p.full_name]));
+  // Government-fee payouts are visible only to those who can read the treasury (RLS enforces this)
+  const { data: govt } = await supabase.from("ledger_entries")
+    .select("id,amount,method,occurred_at,description,voided_at,reference_no,receipt_path,profiles(full_name)")
+    .eq("transaction_id", id).eq("kind", "govt_fee").order("occurred_at");
 
   const docRows: DocRow[] = (docs ?? []).map((d) => ({
     ...(d as unknown as DocRow),
     type_name: (d as unknown as { document_types: { name: string } | null }).document_types?.name ?? "",
   }));
-  const paidList = (pays ?? []) as { id: string; amount: number; method: string; occurred_at: string; description: string | null; voided: boolean }[];
+  const paidList = (pays ?? []) as Pay[];
+  const history = (hist ?? []) as Hist[];
   const canTxn = s.perms.has("txn.write");
+  const remaining = Number(t.remaining);
+  const cancelled = t.status === "cancelled";
+
+  // One plain sentence that tells the story of this transaction
+  const sentence =
+    cancelled ? "هذه المعاملة ملغاة."
+    : `${TXN_STATUS_LABEL[t.status] === "مكتملة" ? "المعاملة مكتملة" : `المعاملة ${TXN_STATUS_LABEL[t.status]}`}. ` +
+      (Number(t.paid) === 0 ? `لم يدفع العميل شيئاً بعد من ${money(t.total)}.`
+        : remaining <= 0 ? `دفع العميل المبلغ كاملاً (${money(t.total)}).`
+        : `دفع العميل ${money(t.paid)} من ${money(t.total)}، والمتبقي ${money(remaining)}.`);
 
   return (
     <>
       <PageHeader
+        back={{ href: "/transactions", label: "رجوع للمعاملات" }}
         title={t.title}
-        description={`${t.ref_no} · ${fmtDate(t.created_at)}`}
+        description={`رقم المعاملة ${t.ref_no}`}
         actions={
           <>
-            <Button asChild variant="outline"><Link href={`/print/${id}`} target="_blank"><Printer /> فاتورة</Link></Button>
+            <Button asChild variant="outline"><Link href={`/print/${id}`} target="_blank"><Printer /> طباعة الفاتورة</Link></Button>
             {paidList.some((p) => !p.voided) && (
               <Button asChild variant="outline"><Link href={`/print/${id}?type=receipt`} target="_blank"><Receipt /> إيصال استلام</Link></Button>
             )}
@@ -65,39 +101,55 @@ export default async function TransactionPage({ params }: { params: Promise<{ id
         }
       />
 
+      <div className={`mb-4 rounded-card border px-4 py-3.5 text-[15px] font-medium leading-7 ${cancelled ? "border-line bg-mute-soft text-mute" : remaining > 0 ? "border-warn/40 bg-warn-soft text-warn" : "border-ok/40 bg-ok-soft text-ok"}`}>
+        {sentence}
+      </div>
+
       <div className="grid gap-4 lg:grid-cols-3">
         <div className="space-y-4 lg:col-span-2">
+          <StatusStepper id={id} status={t.status} canWrite={canTxn} />
+
           <Card>
-            <CardHeader title="بيانات المعاملة" action={<StatusSelect id={id} status={t.status} disabled={!canTxn} />} />
-            <dl className="grid gap-x-6 gap-y-4 p-4 text-sm sm:grid-cols-2">
-              <div><dt className="text-xs text-ink-3">العميل</dt><dd className="mt-0.5 font-medium"><Link className="hover:text-navy" href={`/clients/${t.client_id}`}>{t.client_name}</Link></dd></div>
-              <div><dt className="text-xs text-ink-3">الموظف المسؤول</dt><dd className="mt-0.5">{t.assignee_name ?? "—"}</dd></div>
-              <div><dt className="text-xs text-ink-3">تاريخ الاستحقاق</dt><dd className="mt-0.5 num">{fmtDate(t.due_date)}</dd></div>
-              <div><dt className="text-xs text-ink-3">تاريخ الإكمال</dt><dd className="mt-0.5 num">{fmtDate(t.completed_at)}</dd></div>
+            <CardHeader title="بيانات المعاملة" />
+            <dl className="grid gap-x-6 gap-y-4 p-4 text-[15px] sm:grid-cols-2">
+              <div><dt className="text-sm text-ink-3">العميل</dt><dd className="mt-0.5 font-semibold"><Link className="hover:text-navy" href={`/clients/${t.client_id}`}>{t.client_name}</Link></dd></div>
+              <div><dt className="text-sm text-ink-3">سجّلها</dt><dd className="mt-0.5">{t.created_by_name ?? "—"} <span className="text-sm text-ink-3 num">· {fmtDateTime(t.created_at)}</span></dd></div>
+              <div><dt className="text-sm text-ink-3">الموظف المسؤول عن المتابعة</dt><dd className="mt-0.5">{t.assignee_name ?? "غير محدد"}</dd></div>
+              <div><dt className="text-sm text-ink-3">موعد التسليم المتوقع</dt><dd className="mt-0.5 num">{fmtDate(t.due_date)}</dd></div>
+              {t.completed_at && <div><dt className="text-sm text-ink-3">تاريخ الإنجاز</dt><dd className="mt-0.5 num">{fmtDateTime(t.completed_at)}</dd></div>}
               {notes?.internal_notes && (
-                <div className="sm:col-span-2"><dt className="text-xs text-ink-3">ملاحظات داخلية</dt><dd className="mt-1 rounded-md bg-bg p-2.5 text-xs text-ink-2 whitespace-pre-wrap">{notes.internal_notes}</dd></div>
+                <div className="sm:col-span-2"><dt className="text-sm text-ink-3">ملاحظات المكتب</dt><dd className="mt-1 whitespace-pre-wrap rounded-ctl bg-bg p-3 text-sm text-ink-2">{notes.internal_notes}</dd></div>
               )}
             </dl>
           </Card>
 
           <Card>
             <CardHeader
-              title="الدفعات المستلمة"
-              action={canTxn && (accounts?.length ?? 0) > 0 && (
-                <PayDialog title="تسجيل دفعة من العميل" trigger="دفعة" action={recordPayment.bind(null, id)} accounts={accounts ?? []} defaultAmount={Number(t.remaining)} variant="primary" />
+              title="الدفعات التي استلمناها من العميل"
+              action={canTxn && !cancelled && remaining > 0 && (accounts?.length ?? 0) > 0 && (
+                <PayDialog title="تسجيل دفعة من العميل" hint="سجّل المبلغ وطريقة الدفع. وإن كانت حوالة فاكتب رقمها وأرفق إشعار الحوالة." trigger="تسجيل دفعة" action={recordPayment.bind(null, id)} accounts={accounts ?? []} defaultAmount={remaining} variant="primary" />
               )}
             />
             {paidList.length === 0 ? (
-              <Empty icon={<FileText />} title="لا توجد دفعات بعد" />
+              <Empty icon={<FileText />} title="لا توجد دفعات بعد" hint={canTxn && remaining > 0 ? "عندما يدفع العميل اضغط «تسجيل دفعة»" : undefined} />
             ) : (
               <ul className="divide-y divide-line">
                 {paidList.map((p) => (
-                  <li key={p.id} className={`flex items-center justify-between gap-3 px-4 py-3 text-sm ${p.voided ? "opacity-50 line-through" : ""}`}>
-                    <div>
-                      <div className="num">{fmtDateTime(p.occurred_at)}</div>
-                      <div className="text-xs text-ink-3">{METHOD_LABEL[p.method] ?? ""}{p.description ? ` · ${p.description}` : ""}</div>
+                  <li key={p.id} className={`flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3.5 ${p.voided ? "opacity-50" : ""}`}>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2 text-[15px] font-semibold">
+                        <span className={`num ${p.voided ? "line-through" : "text-ok"}`}>{money(p.amount)}</span>
+                        <Badge tone={p.method === "bank_transfer" ? "navy" : p.method === "cheque" ? "orange" : "mute"}>{METHOD_LABEL[p.method] ?? p.method}</Badge>
+                        {p.voided && <Badge tone="mute">ملغاة</Badge>}
+                      </div>
+                      <div className="mt-1 space-y-0.5 text-sm text-ink-3">
+                        <div>تاريخ الدفع: <span className="font-medium text-ink-2 num">{fmtDate(p.occurred_at)}</span>{p.recorded_by ? <> · سجّلها {p.recorded_by}</> : null}</div>
+                        {p.reference_no && <div>{p.method === "cheque" ? "رقم الشيك" : "رقم الحوالة / العملية"}: <span className="font-medium text-ink-2 num">{p.reference_no}</span></div>}
+                        {p.paid_by && <div>المحوِّل / الدافع: <span className="font-medium text-ink-2">{p.paid_by}</span></div>}
+                        {p.description && <div>ملاحظة: {p.description}</div>}
+                      </div>
                     </div>
-                    <span className="font-medium text-ok num">{money(p.amount)}</span>
+                    {p.has_receipt && <ReceiptButton entryId={p.id} />}
                   </li>
                 ))}
               </ul>
@@ -107,24 +159,27 @@ export default async function TransactionPage({ params }: { params: Promise<{ id
           {s.perms.has("treasury.view") && (
             <Card>
               <CardHeader
-                title="الرسوم الحكومية المسددة"
-                action={s.perms.has("treasury.write") && (accounts?.length ?? 0) > 0 && (
-                  <PayDialog title="تسجيل سداد رسوم حكومية" trigger="سداد رسوم" action={recordGovtFee.bind(null, id)} accounts={accounts ?? []} defaultAmount={Number(t.govt_fees)} />
+                title="الرسوم الحكومية التي دفعناها عن العميل"
+                action={s.perms.has("treasury.write") && !cancelled && (accounts?.length ?? 0) > 0 && (
+                  <PayDialog title="تسجيل دفع رسوم حكومية" hint="المبلغ الذي دفعته للجهة الحكومية من الكاش أو البطاقة." trigger="تسجيل دفع رسوم" action={recordGovtFee.bind(null, id)} accounts={accounts ?? []} defaultAmount={Number(t.govt_fees)} payer={false} />
                 )}
               />
               {!govt?.length ? (
-                <Empty title="لم تُسدَّد رسوم حكومية بعد" />
+                <Empty title="لم تُسجَّل رسوم حكومية بعد" hint={`المطلوب حسب المعاملة: ${money(t.govt_fees)}`} />
               ) : (
                 <ul className="divide-y divide-line">
-                  {govt.map((g) => (
-                    <li key={g.id} className={`flex items-center justify-between px-4 py-3 text-sm ${g.voided_at ? "opacity-50 line-through" : ""}`}>
-                      <div>
-                        <div className="num">{fmtDateTime(g.occurred_at)}</div>
-                        <div className="text-xs text-ink-3">{METHOD_LABEL[g.method ?? ""] ?? LEDGER_KIND_LABEL.govt_fee}</div>
-                      </div>
-                      <span className="font-medium text-bad num">−{money(g.amount)}</span>
-                    </li>
-                  ))}
+                  {govt.map((g) => {
+                    const who = (g as unknown as { profiles: { full_name: string } | null }).profiles?.full_name;
+                    return (
+                      <li key={g.id} className={`flex flex-wrap items-center gap-3 px-4 py-3.5 ${g.voided_at ? "opacity-50" : ""}`}>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-2 text-[15px] font-semibold"><span className={`text-bad num ${g.voided_at ? "line-through" : ""}`}>−{money(g.amount)}</span><Badge tone="mute">{METHOD_LABEL[g.method ?? ""] ?? ""}</Badge></div>
+                          <div className="mt-1 text-sm text-ink-3"><span className="num">{fmtDate(g.occurred_at)}</span>{g.reference_no ? <> · رقم العملية <span className="num">{g.reference_no}</span></> : null}{who ? ` · سجّلها ${who}` : ""}</div>
+                        </div>
+                        {g.receipt_path && <ReceiptButton entryId={g.id} kind="ledger" />}
+                      </li>
+                    );
+                  })}
                 </ul>
               )}
             </Card>
@@ -132,44 +187,38 @@ export default async function TransactionPage({ params }: { params: Promise<{ id
 
           <DocumentsPanel
             docs={docRows} types={types ?? []} clientId={t.client_id} transactionId={id}
-            canWrite={s.perms.has("docs.write")} canDelete={s.perms.has("docs.delete")} title="مستندات المعاملة"
+            canWrite={s.perms.has("docs.write")} canDelete={s.perms.has("docs.delete")} title="الفواتير والإيصالات والمستندات"
           />
+
+          {history.length > 0 && (
+            <Card>
+              <CardHeader title="سجل المعاملة: من فعل ماذا ومتى" />
+              <ul className="divide-y divide-line">
+                {history.map((h) => (
+                  <li key={h.id} className="px-4 py-3">
+                    <div className="text-[15px] text-ink">{describe(h)}</div>
+                    <div className="mt-0.5 text-sm text-ink-3">{h.user_name ?? "النظام"} · <span className="num">{fmtDateTime(h.at)}</span></div>
+                  </li>
+                ))}
+              </ul>
+            </Card>
+          )}
         </div>
 
         <div className="space-y-4">
           <Card>
-            <CardHeader title="الملخص المالي" action={<Badge tone={STATUS_TONE[t.payment_status]}>{PAY_STATUS_LABEL[t.payment_status]}</Badge>} />
-            <dl className="space-y-2.5 p-4 text-sm">
+            <CardHeader title="الحساب المالي" action={<Badge tone={STATUS_TONE[t.payment_status]}>{PAY_STATUS_LABEL[t.payment_status]}</Badge>} />
+            <dl className="space-y-3 p-4 text-[15px]">
               <Row label="الرسوم الحكومية" value={money(t.govt_fees)} />
               <Row label="أتعاب المكتب" value={money(t.office_fee)} />
-              {Number(t.discount) > 0 && <Row label="الخصم" value={`−${money(t.discount)}`} />}
-              <div className="border-t border-line pt-2.5"><Row label="الإجمالي" value={money(t.total)} strong /></div>
-              <Row label="المدفوع" value={money(t.paid)} tone="ok" />
-              <Row label="المتبقي" value={money(t.remaining)} tone={Number(t.remaining) > 0 ? "bad" : undefined} strong />
+              {Number(t.discount) > 0 && <Row label="خصم" value={`−${money(t.discount)}`} />}
+              <div className="border-t border-line pt-3"><Row label="المطلوب من العميل" value={money(t.total)} strong /></div>
+              <Row label="دفع العميل" value={money(t.paid)} tone="ok" />
+              <Row label="المتبقي" value={money(t.remaining)} tone={remaining > 0 ? "bad" : undefined} strong />
             </dl>
           </Card>
-          {trail && trail.length > 0 && (
-            <Card>
-              <CardHeader title="سجل المعاملة" />
-              <ul className="divide-y divide-line text-xs">
-                {trail.map((a) => {
-                  const n = a.new_data as Record<string, unknown> | null;
-                  const o = a.old_data as Record<string, unknown> | null;
-                  const text = a.entity === "ledger_entries"
-                    ? `حركة مالية: ${LEDGER_KIND_LABEL[String(n?.kind ?? o?.kind)] ?? ""} ${money(Number(n?.amount ?? o?.amount ?? 0))}${n?.voided_at && !o?.voided_at ? " (إلغاء)" : ""}`
-                    : a.action === "insert" ? "إنشاء المعاملة" : n && o && n.status !== o.status ? `تغيير الحالة إلى ${TXN_STATUS_LABEL[String(n.status)] ?? n.status}` : "تعديل بيانات المعاملة";
-                  return (
-                    <li key={a.id} className="px-4 py-2.5">
-                      <div className="text-ink-2">{text}</div>
-                      <div className="mt-0.5 text-ink-3">{a.user_id ? who.get(a.user_id) ?? "—" : "النظام"} · <span className="num">{fmtDateTime(a.at)}</span></div>
-                    </li>
-                  );
-                })}
-              </ul>
-            </Card>
-          )}
           {s.perms.has("txn.delete") && (
-            <ConfirmButton variant="danger" className="w-full" title="حذف المعاملة" message="ستُخفى المعاملة من القوائم، وتبقى الحركات المالية المرتبطة محفوظة في الخزينة." action={deleteTransaction.bind(null, id)} confirmLabel="حذف">
+            <ConfirmButton variant="danger" className="w-full" title="حذف المعاملة" message="ستُنقل المعاملة إلى سلة المحذوفات ويمكن استرجاعها لاحقاً. تبقى الحركات المالية المرتبطة بها محفوظة." action={deleteTransaction.bind(null, id)} confirmLabel="حذف">
               حذف المعاملة
             </ConfirmButton>
           )}
@@ -181,9 +230,9 @@ export default async function TransactionPage({ params }: { params: Promise<{ id
 
 function Row({ label, value, strong, tone }: { label: string; value: string; strong?: boolean; tone?: "ok" | "bad" }) {
   return (
-    <div className="flex items-center justify-between">
+    <div className="flex items-center justify-between gap-3">
       <dt className="text-ink-2">{label}</dt>
-      <dd className={`num ${strong ? "font-semibold" : ""} ${tone === "ok" ? "text-ok" : tone === "bad" ? "text-bad" : ""}`}>{value}</dd>
+      <dd className={`num ${strong ? "text-lg font-bold" : "font-medium"} ${tone === "ok" ? "text-ok" : tone === "bad" ? "text-bad" : ""}`}>{value}</dd>
     </div>
   );
 }

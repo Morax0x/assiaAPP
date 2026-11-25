@@ -15,7 +15,7 @@ export default async function AlertsPage() {
   ]);
   return (
     <>
-      <PageHeader title="مركز التنبيهات والتجديد" description="متابعة جميع المستندات ذات تاريخ الانتهاء" />
+      <PageHeader title="تنبيهات التجديد" description="المستندات التي انتهت أو ستنتهي قريباً. ابدأ بقسم «منتهي» ثم «ينتهي قريباً». بعد التجديد اضغط «رفع النسخة المجددة» وسيُغلق التنبيه تلقائياً." />
       <AlertsBoard
         rows={(rows ?? []) as AlertRow[]}
         template={settings?.whatsapp_template ?? ""}

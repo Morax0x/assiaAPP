@@ -17,7 +17,7 @@ export default async function EditTransactionPage({ params }: { params: Promise<
   const { clients, templates, staff } = await loadTxnLookups();
   return (
     <div className="mx-auto max-w-3xl">
-      <PageHeader title={`تعديل ${t.ref_no}`} />
+      <PageHeader title={`تعديل المعاملة ${t.ref_no}`} back={{ href: `/transactions/${id}`, label: "رجوع للمعاملة" }} />
       <Card className="p-4">
         <TransactionForm
           mode="edit" action={updateTransaction.bind(null, id)} submitLabel="حفظ التعديلات"

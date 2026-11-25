@@ -24,7 +24,7 @@ export default async function ClientStatementPage({ params }: { params: Promise<
   const credit = rows.reduce((a, r) => a + Number(r.credit), 0);
   return (
     <>
-      <PageHeader title={`كشف حساب: ${c.name}`} description="الفواتير والدفعات والرصيد المستحق"
+      <PageHeader back={{ href: `/clients/${id}`, label: "رجوع لملف العميل" }} title={`كشف حساب: ${c.name}`} description="الفواتير والدفعات والرصيد المستحق"
         actions={<><Button asChild variant="outline" className="no-print"><Link href={`/clients/${id}`}>رجوع</Link></Button><div className="no-print"><PrintButton /></div></>} />
       <div className="mb-4 grid grid-cols-3 gap-3">
         <Card className="p-3"><div className="text-xs text-ink-3">إجمالي الفواتير</div><div className="mt-1 font-semibold num">{money(debit)}</div></Card>

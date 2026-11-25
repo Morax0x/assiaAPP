@@ -15,7 +15,7 @@ export default async function NewDocumentPage({ searchParams }: { searchParams: 
   ]);
   return (
     <div className="mx-auto max-w-2xl">
-      <PageHeader title="رفع مستندات" description="يمكن رفع عدة ملفات دفعة واحدة أو تصويرها بالكاميرا" />
+      <PageHeader back={{ href: "/documents", label: "رجوع للمستندات" }} title="رفع مستندات" description="يمكن رفع عدة ملفات دفعة واحدة أو تصويرها بالكاميرا" />
       <Card className="p-4">
         <DocumentUploader types={types ?? []} clients={clients ?? []} clientId={client} />
       </Card>

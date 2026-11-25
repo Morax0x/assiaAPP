@@ -32,7 +32,7 @@ export default async function ReceivablesPage() {
 
   return (
     <>
-      <PageHeader title="المستحقات والآجل" description="الفواتير غير المسددة بالكامل" actions={<ExportButton type="receivables" label="تصدير Excel" />} />
+      <PageHeader title="المبالغ المتبقية على العملاء" description="كل معاملة لم يدفع العميل ثمنها بالكامل، مرتبة حسب العميل. اضغط «تذكير» لإرسال رسالة واتساب جاهزة." actions={<ExportButton type="receivables" label="تصدير Excel" />} />
       <Card className="mb-4 p-4">
         <div className="text-xs text-ink-3">إجمالي المستحق لدى العملاء</div>
         <div className={`mt-1 text-2xl font-semibold ${grand > 0 ? "text-bad" : "text-ok"}`}><span className="num">{money(grand)}</span></div>

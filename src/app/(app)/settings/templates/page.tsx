@@ -28,8 +28,8 @@ export default async function TemplatesSettings() {
   return (
     <Card>
       <CardHeader
-        title={`قوالب الخدمات (${data?.length ?? 0})`}
-        action={<ActionDialog title="قالب خدمة جديد" trigger={<><Plus /> قالب</>} triggerProps={{ size: "sm", variant: "primary" }} action={saveTemplate}><Fields /></ActionDialog>}
+        title={`قائمة الخدمات والأسعار (${data?.length ?? 0})`}
+        action={<ActionDialog title="خدمة جديدة" trigger={<><Plus /> إضافة خدمة</>} triggerProps={{ size: "sm", variant: "primary" }} action={saveTemplate}><Fields /></ActionDialog>}
       />
       {!data?.length ? <Empty title="لا توجد قوالب" hint="أضف الخدمات المتكررة لتعبئة المعاملات خلال ثوانٍ" /> : (
         <ul className="divide-y divide-line">

@@ -22,7 +22,7 @@ export default async function ClientsPage() {
     <>
       <PageHeader
         title="العملاء"
-        description={`${rows.length} عميل`}
+        description={`${rows.length} عميل. اضغط على أي عميل لفتح ملفه ومعاملاته ومستنداته.`}
         actions={s.perms.has("clients.write") && (
           <Button asChild><Link href="/clients/new"><Plus /> عميل جديد</Link></Button>
         )}

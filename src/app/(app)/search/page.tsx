@@ -2,7 +2,7 @@ import { PageHeader } from "@/components/ui/card";
 import { requirePage } from "@/lib/auth";
 import { SmartSearch } from "./smart-search";
 
-export const metadata = { title: "البحث الذكي" };
+export const metadata = { title: "البحث" };
 
 export default async function SearchPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
   const s = await requirePage();
@@ -19,7 +19,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
   ];
   return (
     <>
-      <PageHeader title="البحث الذكي" description="اكتب أو تكلّم بالعربية: عميل، معاملة، مستند، فاتورة، مبلغ، أو سؤال مثل «كم المستحق على محمد؟»" />
+      <PageHeader title="بحث بالكتابة أو الصوت" description="اكتب بكلماتك العادية، أو اضغط الميكروفون وتحدث. مثلاً: «كم المتبقي على محمد» أو «الإقامات التي تنتهي هذا الشهر»." />
       <SmartSearch initialQuery={q ?? ""} examples={examples} />
     </>
   );

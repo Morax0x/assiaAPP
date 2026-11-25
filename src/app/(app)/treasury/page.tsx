@@ -19,9 +19,9 @@ export default async function TreasuryPage({ searchParams }: { searchParams: Pro
     supabase.from("account_balances").select("*").order("kind"),
     supabase.from("expense_categories").select("id,name").eq("is_active", true).order("name"),
     supabase.from("ledger_entries")
-      .select("id,account_id,direction,kind,amount,method,occurred_at,description,receipt_path,voided_at,accounts(name),expense_categories(name),transactions(ref_no,title)")
+      .select("id,account_id,direction,kind,amount,method,occurred_at,description,receipt_path,voided_at,reference_no,paid_by,accounts(name),expense_categories(name),transactions(id,ref_no,title),clients(id,name),profiles(full_name)")
       .order("occurred_at", { ascending: false }).limit(500),
-    supabase.from("reconciliations").select("id,system_balance,actual_balance,difference,reconciled_at,note,accounts(name)").order("reconciled_at", { ascending: false }).limit(5),
+    supabase.from("reconciliations").select("id,system_balance,actual_balance,difference,reconciled_at,note,accounts(name),profiles(full_name)").order("reconciled_at", { ascending: false }).limit(30),
   ]);
   const accounts = (bal ?? []).map((b) => ({ id: b.account_id as string, name: b.name as string, kind: b.kind as string, balance: Number(b.balance) }));
   const canWrite = s.perms.has("treasury.write");
@@ -30,7 +30,8 @@ export default async function TreasuryPage({ searchParams }: { searchParams: Pro
   return (
     <>
       <PageHeader
-        title="الخزينة والمالية"
+        title="الصندوق والبطاقة"
+        description="رصيد الكاش والبطاقة وكل الحركات. الأرصدة تُحسب تلقائياً من الدفعات والمصاريف."
         actions={
           <>
             {canWrite && <ExpenseDialog accounts={accounts} categories={cats ?? []} defaultOpen={neu === "expense"} />}
@@ -53,21 +54,40 @@ export default async function TreasuryPage({ searchParams }: { searchParams: Pro
         })}
       </div>
       <LedgerList rows={(entries ?? []) as unknown as LedgerRow[]} accounts={accounts.map((a) => ({ id: a.id, name: a.name }))} canWrite={canWrite} />
-      {(recs?.length ?? 0) > 0 && (
-        <Card className="mt-5">
-          <div className="border-b border-line px-4 py-3 text-sm font-semibold">آخر عمليات الجرد</div>
-          <ul className="divide-y divide-line text-sm">
-            {(recs ?? []).map((r) => (
-              <li key={r.id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5">
-                <span>{(r as unknown as { accounts: { name: string } | null }).accounts?.name} <span className="text-xs text-ink-3 num">· {fmtDateTime(r.reconciled_at)}</span></span>
-                <span className={Number(r.difference) === 0 ? "text-ok" : "text-warn"}>
-                  {Number(r.difference) === 0 ? "مطابق" : <>فرق <span className="num">{money(r.difference)}</span></>}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </Card>
-      )}
+      <Card className="mt-5">
+        <div className="border-b border-line px-4 py-3 text-base font-semibold">سجل جرد الصندوق</div>
+        {!(recs?.length) ? (
+          <p className="px-4 py-8 text-center text-sm text-ink-3">لم يُجرَ أي جرد بعد. اضغط «جرد الصندوق» لعدّ الفلوس ومطابقتها مع النظام.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[640px] text-sm">
+              <thead className="border-b border-line bg-bg text-xs text-ink-3">
+                <tr>
+                  <th className="px-3 py-2.5 text-start font-medium">التاريخ</th><th className="px-3 py-2.5 text-start font-medium">الحساب</th>
+                  <th className="px-3 py-2.5 text-end font-medium">في النظام</th><th className="px-3 py-2.5 text-end font-medium">الفعلي</th>
+                  <th className="px-3 py-2.5 text-end font-medium">الفرق</th><th className="px-3 py-2.5 text-start font-medium">أجراه</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-line">
+                {(recs ?? []).map((r) => {
+                  const x = r as unknown as { accounts: { name: string } | null; profiles: { full_name: string } | null };
+                  const d = Number(r.difference);
+                  return (
+                    <tr key={r.id}>
+                      <td className="px-3 py-3 num">{fmtDateTime(r.reconciled_at)}</td>
+                      <td className="px-3 py-3">{x.accounts?.name}</td>
+                      <td className="px-3 py-3 text-end num">{money(r.system_balance, "")}</td>
+                      <td className="px-3 py-3 text-end num">{money(r.actual_balance, "")}</td>
+                      <td className={`px-3 py-3 text-end font-semibold num ${d === 0 ? "text-ok" : "text-warn"}`}>{d === 0 ? "مطابق" : (d > 0 ? "+" : "") + money(d, "")}</td>
+                      <td className="px-3 py-3">{x.profiles?.full_name ?? "—"}{r.note ? <span className="text-ink-3"> · {r.note}</span> : null}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
     </>
   );
 }

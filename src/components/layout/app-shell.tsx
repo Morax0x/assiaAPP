@@ -3,10 +3,10 @@ import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  Bell, ChevronsRight, ChevronsLeft, LogOut, Menu, Plus, Search, X,
+  Bell, CircleHelp, ChevronsRight, ChevronsLeft, LogOut, Menu, Plus, Search, X,
   FilePlus2, UserPlus, Upload, Receipt,
 } from "lucide-react";
-import { NAV } from "@/components/layout/nav";
+import { GROUPS, NAV, type NavItem } from "@/components/layout/nav";
 import { Brand, LogoMark } from "@/components/layout/logo";
 import { CommandPalette } from "@/components/layout/command-palette";
 import { DisplayPanel, TopbarDisplay } from "@/components/layout/theme-controls";
@@ -23,6 +23,45 @@ type Props = {
 
 function isActive(path: string, href: string) {
   return path === href || path.startsWith(href + "/");
+}
+
+function NavGroups({ items, path, collapsed, alertCount }: { items: NavItem[]; path: string; collapsed?: boolean; alertCount: number }) {
+  return (
+    <>
+      {GROUPS.map((g) => {
+        const list = items.filter((n) => n.group === g.key);
+        if (!list.length) return null;
+        return (
+          <div key={g.key} className="mb-2">
+            {collapsed ? <div className="mx-3 my-2 border-t border-line" /> : <div className="px-3 pb-1.5 pt-3 text-xs font-bold tracking-wide text-ink-3">{g.label}</div>}
+            <div className="space-y-0.5">
+              {list.map((n) => {
+                const active = isActive(path, n.href);
+                return (
+                  <Link
+                    key={n.href} href={n.href} title={collapsed ? n.label : undefined}
+                    aria-current={active ? "page" : undefined}
+                    className={cn(
+                      "relative flex min-h-11 items-center gap-3 rounded-ctl px-3 py-2 text-[15px] leading-snug transition-colors",
+                      collapsed && "justify-center px-0",
+                      active ? "bg-navy-soft font-semibold text-navy" : "text-ink-2 hover:bg-mute-soft hover:text-ink",
+                    )}
+                  >
+                    {active && !collapsed && <span className="absolute inset-y-2 end-0 w-1 rounded-full bg-navy" />}
+                    <n.icon className="size-5 shrink-0" strokeWidth={1.75} />
+                    {!collapsed && <span className="flex-1">{n.label}</span>}
+                    {!collapsed && n.href === "/alerts" && alertCount > 0 && (
+                      <span className="rounded-full bg-orange px-2 text-xs font-semibold leading-5 text-white num">{alertCount}</span>
+                    )}
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })}
+    </>
+  );
 }
 
 export function AppShell({ children, perms, user, alertCount }: Props) {
@@ -69,29 +108,7 @@ export function AppShell({ children, perms, user, alertCount }: Props) {
         <div className={cn("flex h-14 items-center border-b border-line", collapsed ? "justify-center" : "px-4")}>
           <Brand compact={collapsed} />
         </div>
-        <nav className="flex-1 space-y-0.5 overflow-y-auto p-2">
-          {items.map((n) => {
-            const active = isActive(path, n.href);
-            return (
-              <Link
-                key={n.href}
-                href={n.href}
-                title={collapsed ? n.label : undefined}
-                className={cn(
-                  "flex h-11 items-center gap-3 rounded-ctl px-3 text-[15px] transition-colors",
-                  collapsed && "justify-center px-0",
-                  active ? "bg-navy-soft font-medium text-navy" : "text-ink-2 hover:bg-mute-soft hover:text-ink",
-                )}
-              >
-                <n.icon className="size-[18px] shrink-0" strokeWidth={1.75} />
-                {!collapsed && <span className="flex-1">{n.label}</span>}
-                {!collapsed && n.href === "/alerts" && alertCount > 0 && (
-                  <span className="rounded-full bg-orange px-1.5 text-[11px] font-semibold leading-5 text-white num">{alertCount}</span>
-                )}
-              </Link>
-            );
-          })}
-        </nav>
+        <nav className="flex-1 overflow-y-auto p-2"><NavGroups items={items} path={path} collapsed={collapsed} alertCount={alertCount} /></nav>
         <div className="border-t border-line p-2">
           <button
             onClick={toggle}
@@ -113,13 +130,14 @@ export function AppShell({ children, perms, user, alertCount }: Props) {
             <div className="md:hidden"><LogoMark className="size-7" /></div>
             <button
               onClick={() => setPalette(true)}
-              className="ms-auto flex h-9 items-center gap-2 rounded-ctl border border-line bg-bg px-3 text-sm text-ink-3 hover:border-line-strong md:ms-0 md:w-80"
+              className="ms-auto flex h-10 min-w-0 items-center gap-2 rounded-ctl border border-line bg-bg px-3 text-sm text-ink-3 hover:border-line-strong md:ms-0 md:w-80"
             >
               <Search className="size-4" strokeWidth={1.75} />
-              <span className="hidden flex-1 text-start md:block">بحث سريع</span>
+              <span className="flex-1 text-start">ابحث هنا</span>
               <kbd className="hidden rounded border border-line bg-surface px-1.5 text-[11px] md:block num">Ctrl K</kbd>
             </button>
             <div className="hidden flex-1 md:block" />
+            <Link href="/help" className="hidden size-10 items-center justify-center rounded-md text-ink-2 hover:bg-mute-soft sm:flex" aria-label="المساعدة" title="المساعدة والشرح"><CircleHelp className="size-5" strokeWidth={1.75} /></Link>
             <TopbarDisplay />
             <Link href="/alerts" className="relative rounded-md p-2.5 text-ink-2 hover:bg-mute-soft" aria-label="التنبيهات">
               <Bell className="size-5" strokeWidth={1.75} />
@@ -157,21 +175,7 @@ export function AppShell({ children, perms, user, alertCount }: Props) {
                 <X className="size-5" strokeWidth={1.75} />
               </button>
             </div>
-            <nav className="flex-1 space-y-0.5 overflow-y-auto p-2">
-              {items.map((n) => (
-                <Link
-                  key={n.href}
-                  href={n.href}
-                  className={cn(
-                    "flex h-11 items-center gap-3 rounded-ctl px-3 text-sm",
-                    isActive(path, n.href) ? "bg-navy-soft font-medium text-navy" : "text-ink-2",
-                  )}
-                >
-                  <n.icon className="size-[18px]" strokeWidth={1.75} />
-                  {n.label}
-                </Link>
-              ))}
-            </nav>
+            <nav className="flex-1 overflow-y-auto p-2"><NavGroups items={items} path={path} alertCount={alertCount} /></nav>
             <div className="border-t border-line p-3 safe-b">
               <DisplayPanel className="mb-4" />
               <div className="mb-2 text-sm font-medium">{user.name}</div>

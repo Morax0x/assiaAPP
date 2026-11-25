@@ -74,7 +74,7 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
               onClick={() => { onOpenChange(false); router.push(q.trim() ? `/search?q=${encodeURIComponent(q.trim())}` : "/search"); }}
               className="flex w-full items-center gap-2 border-t border-line px-3 py-2.5 text-start text-xs text-ink-2 hover:bg-bg"
             >
-              <Search className="size-3.5 text-orange" strokeWidth={1.75} /> بحث ذكي متقدم (كتابة أو صوت){q.trim() ? `: «${q.trim()}»` : ""}
+              <Search className="size-3.5 text-orange" strokeWidth={1.75} /> بحث متقدم بالكتابة أو الصوت{q.trim() ? `: «${q.trim()}»` : ""}
             </button>
           </Command>
         </D.Content>

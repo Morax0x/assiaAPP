@@ -1,5 +1,6 @@
 "use client";
 import * as React from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowDownLeft, ArrowUpRight, Ban, Paperclip, ArrowLeftRight } from "lucide-react";
 import { toast } from "sonner";
@@ -15,7 +16,9 @@ import { fmtDateTime, money } from "@/lib/utils";
 export type LedgerRow = {
   id: string; account_id: string; direction: "in" | "out"; kind: string; amount: number; method: string | null;
   occurred_at: string; description: string | null; receipt_path: string | null; voided_at: string | null;
-  accounts: { name: string } | null; expense_categories: { name: string } | null; transactions: { ref_no: string; title: string } | null;
+  reference_no: string | null; paid_by: string | null;
+  accounts: { name: string } | null; expense_categories: { name: string } | null; transactions: { id: string; ref_no: string; title: string } | null;
+  clients: { id: string; name: string } | null; profiles: { full_name: string } | null;
 };
 
 export function LedgerList({ rows, accounts, canWrite }: { rows: LedgerRow[]; accounts: { id: string; name: string }[]; canWrite: boolean }) {
@@ -60,7 +63,12 @@ export function LedgerList({ rows, accounts, canWrite }: { rows: LedgerRow[]; ac
                     </div>
                     <div className="truncate text-xs text-ink-3">
                       <span className="num">{fmtDateTime(r.occurred_at)}</span> · {r.accounts?.name}{r.method ? ` · ${METHOD_LABEL[r.method]}` : ""}
-                      {r.transactions ? ` · ${r.transactions.ref_no}` : ""}{r.description ? ` · ${r.description}` : ""}
+                      {r.reference_no ? ` · رقم ${r.reference_no}` : ""}{r.paid_by ? ` · ${r.paid_by}` : ""}{r.description ? ` · ${r.description}` : ""}
+                    </div>
+                    <div className="mt-0.5 flex flex-wrap items-center gap-x-3 text-xs text-ink-3">
+                      {r.clients && <Link href={`/clients/${r.clients.id}`} className="font-medium text-navy hover:underline">{r.clients.name}</Link>}
+                      {r.transactions && <Link href={`/transactions/${r.transactions.id}`} className="num text-navy hover:underline">{r.transactions.ref_no}</Link>}
+                      {r.profiles && <span>سجّلها {r.profiles.full_name}</span>}
                     </div>
                   </div>
                   <span className={`text-sm font-semibold num ${r.kind === "transfer" ? "" : isIn ? "text-ok" : "text-bad"}`}>{isIn ? "+" : "−"}{money(r.amount)}</span>

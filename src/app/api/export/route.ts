@@ -43,7 +43,7 @@ export async function GET(req: Request) {
     const { data } = await q;
     rows = (data ?? []).map((t) => ({
       "الرقم المرجعي": t.ref_no, "العميل": t.client_name, "المعاملة": t.title, "الحالة": TXN_STATUS_LABEL[t.status],
-      "الموظف": t.assignee_name ?? "", "الرسوم الحكومية": Number(t.govt_fees), "أتعاب المكتب": Number(t.office_fee),
+      "الموظف المسؤول": t.assignee_name ?? "", "سجّلها": t.created_by_name ?? "", "الرسوم الحكومية": Number(t.govt_fees), "أتعاب المكتب": Number(t.office_fee),
       "الخصم": Number(t.discount), "الإجمالي": Number(t.total), "المدفوع": Number(t.paid), "المتبقي": Number(t.remaining),
       "حالة الدفع": PAY_STATUS_LABEL[t.payment_status], "تاريخ الإنشاء": d(t.created_at),
     }));

@@ -33,7 +33,7 @@ export function ExpenseDialog({ accounts, categories, defaultOpen }: { accounts:
   return (
     <ActionDialog
       defaultOpen={defaultOpen} title="تسجيل مصروف تشغيلي" submitLabel="تسجيل المصروف" action={async (fd) => { const r = await addExpense(fd); if (r.ok) setPath(""); return r; }}
-      trigger={<><Receipt /> مصروف</>} triggerProps={{ variant: "primary" }}
+      trigger={<><Receipt /> تسجيل مصروف</>} triggerProps={{ variant: "primary" }}
     >
       <input type="hidden" name="receipt_path" value={path} />
       <div className="grid gap-3 sm:grid-cols-2">
@@ -63,11 +63,13 @@ export function ExpenseDialog({ accounts, categories, defaultOpen }: { accounts:
 
 export function TransferDialog({ accounts }: { accounts: Acc[] }) {
   return (
-    <ActionDialog title="تحويل داخلي بين الحسابات" description="لا يُحتسب كإيراد ولا كمصروف" submitLabel="تحويل" action={addTransfer} trigger={<><ArrowLeftRight /> تحويل</>}>
+    <ActionDialog title="نقل مبلغ بين الكاش والبطاقة" description="مثلاً: إيداع الكاش في البنك أو سحب من البطاقة. لا يُحتسب ربحاً ولا مصروفاً." submitLabel="تحويل" action={addTransfer} trigger={<><ArrowLeftRight /> نقل بين الحسابات</>}>
       <div className="grid gap-3 sm:grid-cols-2">
         <Field label="من"><Select name="from" defaultValue={accounts[0]?.id}>{accounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}</Select></Field>
         <Field label="إلى"><Select name="to" defaultValue={accounts[1]?.id ?? accounts[0]?.id}>{accounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}</Select></Field>
         <Field label="المبلغ"><Input name="amount" type="number" step="0.01" min="0.01" required dir="ltr" className="text-start" /></Field>
+        <Field label="تاريخ العملية"><Input name="occurred_at" type="date" defaultValue={new Date().toISOString().slice(0, 10)} max={new Date().toISOString().slice(0, 10)} dir="ltr" className="text-start" /></Field>
+        <Field label="رقم العملية / الإيصال (اختياري)"><Input name="reference_no" dir="ltr" className="text-start" /></Field>
         <Field label="ملاحظة"><Input name="note" placeholder="إيداع / سحب" /></Field>
       </div>
     </ActionDialog>
@@ -80,7 +82,7 @@ export function ReconcileDialog({ accounts }: { accounts: Acc[] }) {
   const [actual, setActual] = React.useState("");
   const diff = actual === "" ? null : Number(actual) - sys;
   return (
-    <ActionDialog title="جرد ومطابقة الصندوق" description="قارن الرصيد الفعلي بالرصيد المسجل في النظام" submitLabel="تسجيل المطابقة" action={reconcile} trigger={<><ClipboardCheck /> جرد</>}>
+    <ActionDialog title="جرد الصندوق" description="عدّ الفلوس الموجودة أمامك واكتب المبلغ، وسأقارنه بالرصيد المسجل." submitLabel="تسجيل المطابقة" action={reconcile} trigger={<><ClipboardCheck /> جرد الصندوق</>}>
       <div className="space-y-3">
         <Field label="الحساب"><Select name="account_id" value={id} onChange={(e) => setId(e.target.value)}>{accounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}</Select></Field>
         <div className="flex items-center justify-between rounded-md bg-bg px-3 py-2 text-sm">

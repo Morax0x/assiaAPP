@@ -34,7 +34,7 @@ export default async function StatementPage({ searchParams }: { searchParams: Pr
 
   return (
     <>
-      <PageHeader title={`كشف حساب: ${name}`} description={`من ${fmtDate(from)} إلى ${fmtDate(to)}`}
+      <PageHeader back={{ href: "/treasury", label: "رجوع للصندوق" }} title={`كشف حساب: ${name}`} description={`من ${fmtDate(from)} إلى ${fmtDate(to)}`}
         actions={<><Button asChild variant="outline"><Link href="/treasury">رجوع للخزينة</Link></Button></>} />
       <div className="no-print">
         <StatementAccountSelect accounts={accounts ?? []} account={account} from={from} to={to} />

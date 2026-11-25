@@ -105,12 +105,12 @@ export function AlertsBoard({ rows, template, types, canWrite, canTxn }: { rows:
                 <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
                   <DocumentPreviewButton id={r.id} />
                   {canWrite && <Button size="sm" variant="outline" onClick={() => setRenew(r)}><RefreshCw /> رفع النسخة المجددة</Button>}
-                  {canTxn && <Button size="sm" variant="outline" disabled={busy === r.id} onClick={() => toRenewal(r)}><FilePlus2 /> معاملة تجديد</Button>}
+                  {canTxn && <Button size="sm" variant="outline" disabled={busy === r.id} onClick={() => toRenewal(r)}><FilePlus2 /> فتح معاملة تجديد</Button>}
                   <Button asChild size="sm" variant="outline"><a href={waLink(r)} target="_blank" rel="noreferrer"><MessageCircle /> واتساب</a></Button>
                   {canWrite && (
                     <>
-                      <Button size="sm" variant="ghost" disabled={busy === r.id} onClick={() => run(r.id, () => setFollowup(r.id, "client_notified"), "سُجّل إبلاغ العميل")}><CheckCheck /> تم إبلاغ العميل</Button>
-                      <Button size="sm" variant="ghost" disabled={busy === r.id} onClick={() => run(r.id, () => setFollowup(r.id, "snoozed", 7), "تم التأجيل 7 أيام")}><BellOff /> تأجيل 7 أيام</Button>
+                      <Button size="sm" variant="ghost" disabled={busy === r.id} onClick={() => run(r.id, () => setFollowup(r.id, "client_notified"), "سُجّل إبلاغ العميل")}><CheckCheck /> أبلغتُ العميل</Button>
+                      <Button size="sm" variant="ghost" disabled={busy === r.id} onClick={() => run(r.id, () => setFollowup(r.id, "snoozed", 7), "تم التأجيل 7 أيام")}><BellOff /> ذكّرني بعد 7 أيام</Button>
                     </>
                   )}
                 </div>

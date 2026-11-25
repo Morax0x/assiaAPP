@@ -21,7 +21,7 @@ export default async function PrintPage({ params, searchParams }: { params: Prom
   ]);
   if (!t) notFound();
   const cur = os?.currency ?? "AED";
-  const payments = ((pays ?? []) as { id: string; amount: number; method: string; occurred_at: string; voided: boolean }[]).filter((p) => !p.voided);
+  const payments = ((pays ?? []) as { id: string; amount: number; method: string; occurred_at: string; voided: boolean; reference_no: string | null }[]).filter((p) => !p.voided);
   const docNo = `${isReceipt ? "RCT" : "INV"}-${t.ref_no.replace("TRX-", "")}`;
 
   return (
@@ -86,6 +86,7 @@ export default async function PrintPage({ params, searchParams }: { params: Prom
               <tr className="bg-navy text-white">
                 <th className="px-3 py-2 text-start font-medium">التاريخ</th>
                 <th className="px-3 py-2 text-start font-medium">وسيلة الدفع</th>
+                <th className="px-3 py-2 text-start font-medium">رقم المرجع</th>
                 <th className="px-3 py-2 text-end font-medium">المبلغ ({cur})</th>
               </tr>
             </thead>
@@ -94,13 +95,14 @@ export default async function PrintPage({ params, searchParams }: { params: Prom
                 <tr key={p.id} className="border-b border-line">
                   <td className="px-3 py-2.5 num">{fmtDate(p.occurred_at)}</td>
                   <td className="px-3 py-2.5">{METHOD_LABEL[p.method] ?? ""}</td>
+                  <td className="px-3 py-2.5 num">{p.reference_no ?? "—"}</td>
                   <td className="px-3 py-2.5 text-end num">{money(p.amount, "").trim()}</td>
                 </tr>
               ))}
             </tbody>
             <tfoot>
-              <tr><td colSpan={2} className="px-3 pt-4 text-base font-bold">إجمالي المستلم</td><td className="px-3 pt-4 text-end text-base font-bold num">{money(t.paid, cur)}</td></tr>
-              <tr><td colSpan={2} className="px-3 pt-1">المتبقي على العميل</td><td className="px-3 pt-1 text-end num">{money(t.remaining, cur)}</td></tr>
+              <tr><td colSpan={3} className="px-3 pt-4 text-base font-bold">إجمالي المستلم</td><td className="px-3 pt-4 text-end text-base font-bold num">{money(t.paid, cur)}</td></tr>
+              <tr><td colSpan={3} className="px-3 pt-1">المتبقي على العميل</td><td className="px-3 pt-1 text-end num">{money(t.remaining, cur)}</td></tr>
             </tfoot>
           </table>
         )}

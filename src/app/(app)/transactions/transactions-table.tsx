@@ -10,7 +10,7 @@ import { fmtDate, money } from "@/lib/utils";
 
 export type TxnRow = {
   id: string; ref_no: string; client_id: string; client_name: string; assignee_id: string | null; assignee_name: string | null;
-  title: string; status: string; total: number; paid: number; remaining: number; payment_status: string; created_at: string;
+  title: string; created_by_name: string | null; status: string; total: number; paid: number; remaining: number; payment_status: string; created_at: string;
 };
 type Opt = { id: string; name: string };
 
@@ -40,6 +40,7 @@ export function TransactionsTable({ rows, clients, staff }: { rows: TxnRow[]; cl
     { accessorKey: "payment_status", header: "الدفع", cell: ({ getValue }) => <Badge tone={STATUS_TONE[getValue() as string]}>{PAY_STATUS_LABEL[getValue() as string]}</Badge> },
     { accessorKey: "total", header: "الإجمالي", cell: ({ getValue }) => <span className="num">{money(getValue() as number)}</span> },
     { accessorKey: "remaining", header: "المتبقي", cell: ({ getValue }) => { const v = Number(getValue()); return <span className={v > 0 ? "text-bad num" : "text-ink-3 num"}>{money(v)}</span>; } },
+    { accessorKey: "assignee_name", header: "الموظف", cell: ({ row }) => <span className="text-ink-2">{row.original.assignee_name ?? row.original.created_by_name ?? "—"}</span> },
     { accessorKey: "created_at", header: "التاريخ", cell: ({ getValue }) => <span className="text-ink-2 num">{fmtDate(getValue() as string)}</span> },
   ], []);
 
@@ -76,7 +77,7 @@ export function TransactionsTable({ rows, clients, staff }: { rows: TxnRow[]; cl
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
                 <div className="truncate text-sm font-medium">{r.title}</div>
-                <div className="text-xs text-ink-3">{r.client_name} · <span className="num">{r.ref_no}</span></div>
+                <div className="text-xs text-ink-3">{r.client_name} · <span className="num">{r.ref_no}</span>{(r.assignee_name ?? r.created_by_name) ? ` · ${r.assignee_name ?? r.created_by_name}` : ""}</div>
               </div>
               <span className="text-sm font-semibold num">{money(r.total)}</span>
             </div>

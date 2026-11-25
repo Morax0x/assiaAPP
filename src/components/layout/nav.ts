@@ -3,27 +3,39 @@ import {
 } from "lucide-react";
 import type { PermKey } from "@/lib/permissions";
 
+export type NavGroup = "main" | "money" | "tools";
+
 export type NavItem = {
   href: string;
   label: string;
   icon: typeof LayoutDashboard;
+  group: NavGroup;
   perm?: PermKey;
   anyOf?: PermKey[];
   primaryMobile?: boolean;
 };
 
+export const GROUPS: { key: NavGroup; label: string }[] = [
+  { key: "main", label: "العمل اليومي" },
+  { key: "money", label: "المال" },
+  { key: "tools", label: "أدوات" },
+];
+
 export const NAV: NavItem[] = [
-  { href: "/dashboard", label: "لوحة التحكم", icon: LayoutDashboard, primaryMobile: true },
-  { href: "/transactions", label: "المعاملات", icon: FileText, primaryMobile: true },
-  { href: "/clients", label: "العملاء", icon: Users, primaryMobile: true },
-  { href: "/documents", label: "المستندات", icon: FolderOpen, primaryMobile: true },
-  { href: "/alerts", label: "التنبيهات", icon: BellRing },
-  { href: "/search", label: "البحث الذكي", icon: ScanSearch },
-  { href: "/receivables", label: "المستحقات", icon: WalletCards },
-  { href: "/treasury", label: "الخزينة", icon: Landmark, perm: "treasury.view" },
-  { href: "/reports", label: "التقارير", icon: BarChart3, perm: "reports.view" },
-  { href: "/help", label: "المساعدة", icon: CircleHelp },
-  { href: "/settings", label: "الإعدادات", icon: Settings, anyOf: ["settings.manage", "users.manage", "share.create", "audit.view", "clients.delete", "txn.delete", "docs.delete"] },
+  { href: "/dashboard", label: "الرئيسية", icon: LayoutDashboard, group: "main", primaryMobile: true },
+  { href: "/transactions", label: "المعاملات", icon: FileText, group: "main", primaryMobile: true },
+  { href: "/clients", label: "العملاء", icon: Users, group: "main", primaryMobile: true },
+  { href: "/documents", label: "المستندات", icon: FolderOpen, group: "main", primaryMobile: true },
+  { href: "/receivables", label: "المبالغ المتبقية على العملاء", icon: WalletCards, group: "money" },
+  { href: "/treasury", label: "الصندوق والبطاقة", icon: Landmark, group: "money", perm: "treasury.view" },
+  { href: "/reports", label: "التقارير والأرباح", icon: BarChart3, group: "money", perm: "reports.view" },
+  { href: "/alerts", label: "تنبيهات التجديد", icon: BellRing, group: "tools" },
+  { href: "/search", label: "بحث بالكتابة أو الصوت", icon: ScanSearch, group: "tools" },
+  { href: "/help", label: "المساعدة والشرح", icon: CircleHelp, group: "tools" },
+  {
+    href: "/settings", label: "الإعدادات", icon: Settings, group: "tools",
+    anyOf: ["settings.manage", "users.manage", "share.create", "audit.view", "clients.delete", "txn.delete", "docs.delete"],
+  },
 ];
 
 export function visibleNav(perms: string[]) {

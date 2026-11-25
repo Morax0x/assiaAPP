@@ -10,7 +10,7 @@ export default async function NewClientPage() {
   await requirePage("clients.write");
   return (
     <div className="mx-auto max-w-2xl">
-      <PageHeader title="عميل جديد" />
+      <PageHeader title="عميل جديد" description="اكتب الاسم ورقم الهاتف فقط، والباقي اختياري. يمكنك تعديله لاحقاً." back={{ href: "/clients", label: "رجوع للعملاء" }} />
       <Card className="p-4">
         <NewClientForm action={createClientAndGo}>
           <ClientFields />

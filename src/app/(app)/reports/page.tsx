@@ -42,7 +42,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
 
   return (
     <>
-      <PageHeader title="التقارير المالية" description="حسابات تلقائية دقيقة من دفتر الخزينة" actions={<ExportButton type="report" label="تصدير Excel" />} />
+      <PageHeader title="التقارير والأرباح" description="كم دخل وكم خرج وكم ربح المكتب في أي فترة تختارها. كل الأرقام تُحسب تلقائياً." actions={<ExportButton type="report" label="تصدير Excel" />} />
       <RangePicker from={from} to={to} />
 
       <div className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">

@@ -31,7 +31,7 @@ export const TXN_STATUS_LABEL: Record<string, string> = {
 };
 
 export const PAY_STATUS_LABEL: Record<string, string> = {
-  paid: "مدفوعة",
+  paid: "مدفوعة بالكامل",
   partial: "مدفوعة جزئياً",
   unpaid: "غير مدفوعة",
 };
@@ -40,6 +40,7 @@ export const METHOD_LABEL: Record<string, string> = {
   cash: "كاش",
   bank_card: "بطاقة المكتب",
   bank_transfer: "تحويل بنكي",
+  cheque: "شيك",
 };
 
 export const LEDGER_KIND_LABEL: Record<string, string> = {

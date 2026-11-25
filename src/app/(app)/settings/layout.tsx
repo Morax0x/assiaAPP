@@ -6,9 +6,9 @@ export default async function SettingsLayout({ children }: { children: React.Rea
   const p = s.perms;
   const isOwner = s.profile.role === "owner";
   const items = [
-    p.has("settings.manage") && { href: "/settings/general", label: "المكتب والفواتير" },
-    p.has("settings.manage") && { href: "/settings/reminders", label: "التذكير والتنبيهات" },
-    p.has("settings.manage") && { href: "/settings/templates", label: "قوالب الخدمات" },
+    p.has("settings.manage") && { href: "/settings/general", label: "بيانات المكتب" },
+    p.has("settings.manage") && { href: "/settings/reminders", label: "مواعيد التذكير" },
+    p.has("settings.manage") && { href: "/settings/templates", label: "قائمة الخدمات والأسعار" },
     p.has("settings.manage") && { href: "/settings/accounts", label: "الحسابات والمصاريف" },
     p.has("users.manage") && { href: "/settings/users", label: "الموظفون" },
     isOwner && { href: "/settings/roles", label: "الأدوار والصلاحيات" },
