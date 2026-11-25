@@ -1,36 +1,48 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# آسيا — نظام إدارة المعاملات والخزينة والمستندات
 
-## Getting Started
+Next.js 15 (App Router) + TypeScript + Tailwind v4 + Supabase. واجهة عربية RTL، PWA قابلة للتثبيت.
 
-First, run the development server:
+## 1) قاعدة البيانات (Supabase)
+1. أنشئ مشروعاً في Supabase.
+2. من **SQL Editor** شغّل بالترتيب: `supabase/migrations/0001_schema.sql` ثم `0002_app_support.sql` ثم `0003_seed_service_templates.sql` ثم `0004_reports_and_safeguards.sql`.
+3. من **Authentication > Users** أنشئ أول مستخدم (بريد وكلمة مرور). **أول مستخدم يُسجَّل يصبح صاحب العمل تلقائياً.** بعدها أضف الموظفين من التطبيق: الإعدادات > الموظفون.
+4. من **Authentication > Providers > Email** عطّل "Allow new users to sign up" حتى لا يسجل أحد من الخارج.
 
-```bash
+## 2) التشغيل محلياً
+```powershell
+copy .env.example .env.local   # ثم املأ القيم
+npm run vapid                  # يولّد مفاتيح الإشعارات (ضعها في .env.local)
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 3) المتغيرات
+| المتغير | الاستخدام |
+|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` | من Project Settings > API |
+| `SUPABASE_SERVICE_ROLE_KEY` | خادم فقط: الروابط الموقعة، صفحة المشاركة، إنشاء المستخدمين، فحص التنبيهات |
+| `NEXT_PUBLIC_SITE_URL` | عنوان الموقع الحقيقي (يُبنى عليه رابط المشاركة) |
+| `NEXT_PUBLIC_VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` / `VAPID_SUBJECT` | إشعارات الهاتف والكمبيوتر (لصاحب العمل فقط) |
+| `CRON_SECRET` | سر طويل عشوائي، يحمي `/api/cron/alerts` ويوقّع كوكي رمز المشاركة |
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 4) النشر على Railway
+1. ارفع المشروع إلى GitHub ثم New Project > Deploy from GitHub.
+2. أضف المتغيرات أعلاه في Variables (و`NEXT_PUBLIC_SITE_URL` = رابط Railway أو دومينك).
+3. الأمران الافتراضيان يكفيان: `npm run build` ثم `npm run start`.
+4. **فحص التنبيهات اليومي يعمل داخل التطبيق نفسه** (يفحص كل 3 ساعات بين 7 صباحاً و8 مساءً بتوقيت الإمارات). ويمكن استدعاؤه يدوياً: `POST /api/cron/alerts` مع `Authorization: Bearer <CRON_SECRET>`.
+5. بعد النشر: افتح التطبيق > الإعدادات > إشعاراتي > فعّل الإشعارات على جهازك. على الآيفون ثبّت التطبيق أولاً (مشاركة > إضافة إلى الشاشة الرئيسية).
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 5) ملاحظات أمنية
+- ملفات العملاء في Bucket خاص `vault`، ولا يُقرأ أي ملف إلا عبر رابط موقّع قصير العمر يولده الخادم (120 ثانية، و60 ثانية لروابط المشاركة).
+- الأرصدة وحركات الخزينة والتقارير محمية بسياسات RLS حسب الصلاحية، لا بإخفاء الواجهة فقط.
+- روابط المشاركة تُخزَّن مجزّأة (SHA-256)، ويظهر الرابط الكامل مرة واحدة عند الإنشاء. الرمز السري يُقفل بعد 5 محاولات خاطئة.
+- الفاتورة والإيصال: صفحة طباعة رسمية، "حفظ كـ PDF" من نافذة الطباعة (يحفظ العربية بدقة كاملة).
 
-## Learn More
+## 6) الميزات الأساسية
+- **البحث الذكي** (`/search` أو Ctrl+K ثم «بحث ذكي»): كتابة أو صوت بالعربية، يفهم الأسماء والحالات والمستحقات وأنواع المستندات والفترات والمبالغ، ويجيب على أسئلة مثل «رصيد الكاش» و«عملاء عليهم مستحقات». البحث الصوتي يعمل على Chrome وSafari (يتطلب HTTPS).
+- **المستندات** (`/documents`): مكتبة كل الملفات مع تقسيم حسب العميل أو النوع، وفلاتر الحالة، ورفع متعدد وكاميرا.
+- **الحسابات الدقيقة**: الأرصدة تُحسب من دفتر الحركات فقط. لا يُسمح بدفعة أكبر من المتبقي، ولا بسحب كاش أكبر من الرصيد، والتحويل الداخلي لا يُحتسب إيراداً ولا مصروفاً، والجرد يسجل الفرق.
+- **التقارير** (`/reports`): وارد، رسوم حكومية، مصاريف، صافي الكاش، أتعاب مفوترة، أداء الموظفين، أعلى العملاء، أعمار الديون. و**كشف حساب** للخزينة (برصيد جارٍ) ولكل عميل، قابل للطباعة.
+- **نسخة احتياطية**: الإعدادات > المكتب والفواتير (للمالك).
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## 7) ربط الموقع لاحقاً (assia.ae)
+أبسط ربط بلا برمجة: أضف في الموقع زر «دخول الموظفين» يفتح رابط التطبيق. لاحقاً يمكن إضافة نموذج «طلب خدمة» في الموقع يُنشئ معاملة جديدة في التطبيق عبر نقطة API محمية بمفتاح.

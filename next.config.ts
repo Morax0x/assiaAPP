@@ -1,7 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  serverExternalPackages: ["web-push"],
+  poweredByHeader: false,
+  experimental: { serverActions: { bodySizeLimit: "4mb" } },
 };
 
 export default nextConfig;
