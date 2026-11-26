@@ -11,17 +11,20 @@ import { CLIENT_KIND_PLURAL } from "@/lib/permissions";
 const KindIcon = ({ kind, className }: { kind: string; className?: string }) =>
   kind === "company" ? <Building2 className={className} strokeWidth={1.75} /> : kind === "sponsor" ? <ShieldCheck className={className} strokeWidth={1.75} /> : <User className={className} strokeWidth={1.75} />;
 
-type Row = { id: string; kind: string; name: string; phone: string | null; email: string | null; due: number };
+type Row = { id: string; kind: string; name: string; phone: string | null; email: string | null; due: number; parent_id?: string | null; parent_name?: string | null };
 
 export function ClientsTable({ rows }: { rows: Row[] }) {
   const [q, setQ] = React.useState("");
   const [onlyDue, setOnlyDue] = React.useState(false);
   const [kind, setKind] = React.useState("");
-  const count = (k: string) => (k ? rows.filter((r) => r.kind === k).length : rows.length);
+  const [showEmp, setShowEmp] = React.useState(false);
+  const visible = (r: Row) => showEmp || !!q.trim() || !r.parent_id;
+  const count = (k: string) => rows.filter((r) => visible(r) && (!k || r.kind === k)).length;
+  const empCount = rows.filter((r) => r.parent_id).length;
   const data = React.useMemo(() => {
     const t = q.trim().toLowerCase();
-    return rows.filter((r) => (!kind || r.kind === kind) && (!onlyDue || r.due > 0) && (!t || r.name.toLowerCase().includes(t) || (r.phone ?? "").includes(t) || (r.email ?? "").toLowerCase().includes(t)));
-  }, [rows, q, onlyDue, kind]);
+    return rows.filter((r) => visible(r) && (!kind || r.kind === kind) && (!onlyDue || r.due > 0) && (!t || r.name.toLowerCase().includes(t) || (r.phone ?? "").includes(t) || (r.email ?? "").toLowerCase().includes(t)));
+  }, [rows, q, onlyDue, kind, showEmp]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const columns = React.useMemo<ColumnDef<Row, unknown>[]>(() => [
     {
@@ -29,7 +32,7 @@ export function ClientsTable({ rows }: { rows: Row[] }) {
       cell: ({ row }) => (
         <span className="flex items-center gap-2.5 font-medium">
           <KindIcon kind={row.original.kind} className="size-4 text-ink-3" />
-          {row.original.name}
+          <span>{row.original.name}{row.original.parent_name && <span className="block text-xs font-normal text-ink-3">موظف في {row.original.parent_name}</span>}</span>
         </span>
       ),
     },
@@ -56,6 +59,12 @@ export function ClientsTable({ rows }: { rows: Row[] }) {
           <input type="checkbox" checked={onlyDue} onChange={(e) => setOnlyDue(e.target.checked)} className="size-4 accent-navy" />
           عليهم مستحقات فقط
         </label>
+        {empCount > 0 && (
+          <label className="flex items-center gap-2 text-sm text-ink-2">
+            <input type="checkbox" checked={showEmp} onChange={(e) => setShowEmp(e.target.checked)} className="size-4 accent-navy" />
+            إظهار موظفي الشركات ({empCount})
+          </label>
+        )}
       </div>
       <DataTable
         columns={columns}
@@ -67,7 +76,7 @@ export function ClientsTable({ rows }: { rows: Row[] }) {
             <div className="min-w-0">
               <div className="flex items-center gap-2 font-medium">
                 <KindIcon kind={r.kind} className="size-4 text-ink-3" />
-                <span className="truncate">{r.name}</span>
+                <span className="truncate">{r.name}{r.parent_name && <span className="block text-xs font-normal text-ink-3">موظف في {r.parent_name}</span>}</span>
               </div>
               <div className="mt-1 text-xs text-ink-3 num">{r.phone || "—"}</div>
             </div>

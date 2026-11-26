@@ -6,7 +6,7 @@ import { Field, Input, Select } from "@/components/ui/form";
 import { Badge } from "@/components/ui/badge";
 import { createClient } from "@/lib/supabase/server";
 import { requirePage } from "@/lib/auth";
-import { PERMISSION_PRESETS } from "@/lib/permissions";
+import { PERMISSION_PRESETS, PERMISSION_SHORT, PERMISSIONS } from "@/lib/permissions";
 import { createUser } from "@/modules/users/actions";
 import { getOfficeLink } from "@/modules/auth/enter";
 import { OfficeLinkCard } from "./access-panel";
@@ -19,6 +19,16 @@ export default async function UsersSettings() {
   const supabase = await createClient();
   const { data: users } = await supabase.from("profiles").select("id,full_name,phone,job_title,role,is_active,archived_at").order("created_at");
   const link = await getOfficeLink();
+  const [{ data: rp }, { data: up }] = await Promise.all([
+    supabase.from("role_permissions").select("role,permission,allowed"),
+    supabase.from("user_permissions").select("user_id,permission,allowed"),
+  ]);
+  const canDo = (u: { id: string; role: string }) => {
+    if (u.role === "owner") return PERMISSIONS.map((x) => x.key as string);
+    const m = new Map<string, boolean>((rp ?? []).filter((r) => r.role === u.role).map((r) => [r.permission as string, !!r.allowed]));
+    (up ?? []).filter((r) => r.user_id === u.id).forEach((r) => m.set(r.permission as string, !!r.allowed));
+    return [...m].filter(([, v]) => v).map(([k]) => k);
+  };
   const active = (users ?? []).filter((u) => !u.archived_at);
   const archived = (users ?? []).filter((u) => u.archived_at);
   return (
@@ -53,6 +63,7 @@ export default async function UsersSettings() {
                 <div className="min-w-0 flex-1">
                   <div className="truncate text-[15px] font-semibold">{u.full_name}{u.id === s.userId && <span className="ms-2 text-xs font-normal text-ink-3">(أنت)</span>}{u.role === "owner" && <span className="ms-2 text-xs font-normal text-ink-3">(حساب المالك)</span>}</div>
                   <div className="truncate text-sm text-ink-3">{[u.job_title, u.phone].filter(Boolean).join(" · ") || "—"}</div>
+                  <div className="mt-0.5 text-xs leading-5 text-ink-3">{(() => { const c = canDo(u); if (u.role === "owner") return "كل الصلاحيات"; const names = c.filter((k) => !k.endsWith(".delete")).map((k) => PERMISSION_SHORT[k]).filter(Boolean); return c.length === 0 ? "عرض فقط" : `${c.length} من ${PERMISSIONS.length} صلاحية: ${names.slice(0, 4).join("، ")}${names.length > 4 ? "…" : ""}`; })()}</div>
                 </div>
                 {!u.is_active && <Badge tone="mute">موقوف</Badge>}
                 <ChevronLeft className="size-4 text-ink-3" />

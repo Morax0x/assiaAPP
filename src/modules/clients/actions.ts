@@ -13,6 +13,7 @@ const schema = z.object({
   whatsapp: z.string().optional(),
   email: z.union([z.string().email("البريد غير صالح"), z.literal("")]).optional(),
   notes: z.string().optional(),
+  parent_id: z.string().optional(),
 });
 
 export async function createClientAction(fd: FormData): Promise<Result<{ id: string }>> {
@@ -22,7 +23,7 @@ export async function createClientAction(fd: FormData): Promise<Result<{ id: str
     const supabase = await createClient();
     const { data, error } = await supabase
       .from("clients")
-      .insert({ ...v, phone: emptyToNull(v.phone), whatsapp: emptyToNull(v.whatsapp), email: emptyToNull(v.email), notes: emptyToNull(v.notes), created_by: s.userId })
+      .insert({ ...v, phone: emptyToNull(v.phone), whatsapp: emptyToNull(v.whatsapp), email: emptyToNull(v.email), notes: emptyToNull(v.notes), parent_id: v.kind === "company" ? null : emptyToNull(v.parent_id), created_by: s.userId })
       .select("id").single();
     if (error) throw error;
     revalidatePath("/clients");
@@ -43,6 +44,7 @@ export async function updateClientAction(id: string, fd: FormData): Promise<Resu
     const supabase = await createClient();
     const { error } = await supabase.from("clients").update({
       ...v, phone: emptyToNull(v.phone), whatsapp: emptyToNull(v.whatsapp), email: emptyToNull(v.email), notes: emptyToNull(v.notes),
+      parent_id: v.kind === "company" ? null : emptyToNull(v.parent_id),
     }).eq("id", id);
     if (error) throw error;
     revalidatePath(`/clients/${id}`);

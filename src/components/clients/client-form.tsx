@@ -2,9 +2,9 @@
 import * as React from "react";
 import { Field, Input, Select, Textarea } from "@/components/ui/form";
 
-export type ClientValues = { kind?: string; name?: string; phone?: string | null; whatsapp?: string | null; email?: string | null; notes?: string | null };
+export type ClientValues = { kind?: string; name?: string; phone?: string | null; whatsapp?: string | null; email?: string | null; notes?: string | null; parent_id?: string | null };
 
-export function ClientFields({ v = {} }: { v?: ClientValues }) {
+export function ClientFields({ v = {}, companies }: { v?: ClientValues; companies?: { id: string; name: string }[] }) {
   return (
     <div className="grid gap-3 sm:grid-cols-2">
       <Field label="النوع">
@@ -14,6 +14,14 @@ export function ClientFields({ v = {} }: { v?: ClientValues }) {
           <option value="sponsor">كفيل</option>
         </Select>
       </Field>
+      {companies && companies.length > 0 && (
+        <Field label="يتبع شركة (اختياري)" hint="مثلاً موظف داخل ملف شركة. تبقى مستنداته داخل ملف الشركة" className="sm:col-span-2">
+          <Select name="parent_id" defaultValue={v.parent_id ?? ""}>
+            <option value="">لا يتبع شركة</option>
+            {companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </Select>
+        </Field>
+      )}
       <Field label="الاسم"><Input name="name" defaultValue={v.name ?? ""} required /></Field>
       <Field label="الهاتف"><Input name="phone" defaultValue={v.phone ?? ""} dir="ltr" className="text-start" inputMode="tel" /></Field>
       <Field label="واتساب" hint="اتركه فارغاً إن كان نفس الهاتف">

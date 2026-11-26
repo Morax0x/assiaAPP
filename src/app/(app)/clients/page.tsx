@@ -12,12 +12,13 @@ export default async function ClientsPage() {
   const s = await requirePage();
   const supabase = await createClient();
   const [{ data: clients }, { data: owing }] = await Promise.all([
-    supabase.from("clients").select("id,kind,name,phone,email,created_at").is("deleted_at", null).order("name"),
+    supabase.from("clients").select("id,kind,name,phone,email,created_at,parent_id").is("deleted_at", null).order("name"),
     supabase.from("transactions_list").select("client_id,remaining").neq("status", "cancelled").gt("remaining", 0),
   ]);
   const due = new Map<string, number>();
   (owing ?? []).forEach((r) => due.set(r.client_id, (due.get(r.client_id) ?? 0) + Number(r.remaining)));
-  const rows = (clients ?? []).map((c) => ({ ...c, due: due.get(c.id) ?? 0 }));
+  const nameOf = new Map((clients ?? []).map((c) => [c.id, c.name as string]));
+  const rows = (clients ?? []).map((c) => ({ ...c, due: due.get(c.id) ?? 0, parent_name: c.parent_id ? nameOf.get(c.parent_id) ?? null : null }));
   return (
     <>
       <PageHeader

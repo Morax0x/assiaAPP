@@ -9,7 +9,10 @@ import { safe, emptyToNull } from "@/lib/action";
 const docSchema = z.object({
   client_id: z.string().uuid(),
   transaction_id: z.string().uuid().nullable().optional(),
-  type_id: z.string().uuid(),
+  type_id: z.string().uuid().nullable().optional(),
+  custom_type: z.string().max(60).nullable().optional(),
+  folder: z.string().max(300).nullable().optional(),
+  tag: z.string().max(80).nullable().optional(),
   title: z.string().min(1).max(200),
   issue_date: z.string().nullable().optional(),
   expiry_date: z.string().nullable().optional(),
@@ -18,21 +21,50 @@ const docSchema = z.object({
   size_bytes: z.number().int().positive().max(15 * 1024 * 1024),
 });
 
+/** Normalises a folder path: no leading/trailing slashes, no empty parts, forward slashes only. */
+function cleanFolder(f?: string | null) {
+  const v = (f ?? "").replace(/\\/g, "/").split("/").map((x) => x.trim()).filter(Boolean).join("/");
+  return v ? v.slice(0, 300) : null;
+}
+
+/** Finds a document type by name or creates it (so typing a new type once makes it available everywhere). */
+async function ensureType(name: string) {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("ensure_document_type", { p_name: name });
+  if (error || !data) throw new Error(error?.message ?? "تعذر إنشاء نوع المستند");
+  return data as string;
+}
+
 export async function createDocuments(items: z.input<typeof docSchema>[]) {
   return safe(async () => {
     const s = await requireAction("docs.write");
     const supabase = await createClient();
-    const rows = items.map((i) => {
+    const typeCache = new Map<string, string>();
+    const resolve = async (type_id?: string | null, custom?: string | null) => {
+      const name = custom?.trim();
+      if (name) {
+        const k = name.toLowerCase();
+        if (!typeCache.has(k)) typeCache.set(k, await ensureType(name));
+        return typeCache.get(k)!;
+      }
+      if (!type_id) throw new Error("اختر نوع المستند أو اكتب نوعاً جديداً");
+      return type_id;
+    };
+    const rows = [];
+    for (const i of items) {
       const d = docSchema.parse(i);
       if (!d.storage_path.startsWith(`clients/${d.client_id}/`)) throw new Error("مسار الملف غير صالح");
-      return {
-        ...d,
+      const { custom_type, ...rest } = d;
+      rows.push({
+        ...rest,
+        type_id: await resolve(d.type_id, custom_type),
+        folder: cleanFolder(d.folder), tag: emptyToNull(d.tag?.trim() || undefined),
         transaction_id: emptyToNull(d.transaction_id ?? undefined),
         issue_date: emptyToNull(d.issue_date ?? undefined),
         expiry_date: emptyToNull(d.expiry_date ?? undefined),
         uploaded_by: s.userId,
-      };
-    });
+      });
+    }
     const { error } = await supabase.from("documents").insert(rows);
     if (error) throw error;
     revalidatePath("/alerts");
@@ -130,5 +162,79 @@ export async function createRenewalTransaction(documentId: string) {
     await supabase.from("documents").update({ followup: "renewal_started" }).eq("id", documentId);
     revalidatePath("/alerts");
     return { id: t.id as string };
+  });
+}
+
+const editSchema = z.object({
+  title: z.string().trim().min(1, "اكتب اسم المستند").max(200),
+  type_id: z.string().uuid().nullable().optional(),
+  custom_type: z.string().max(60).nullable().optional(),
+  issue_date: z.string().nullable().optional(),
+  expiry_date: z.string().nullable().optional(),
+  transaction_id: z.string().uuid().nullable().optional(),
+  folder: z.string().max(300).nullable().optional(),
+  tag: z.string().max(80).nullable().optional(),
+});
+
+/** Edit a document's name, type, dates and the transaction it belongs to. */
+export async function updateDocument(id: string, input: z.input<typeof editSchema>) {
+  return safe(async () => {
+    await requireAction("docs.write");
+    const v = editSchema.parse(input);
+    if (v.issue_date && v.expiry_date && v.expiry_date < v.issue_date) throw new Error("تاريخ الانتهاء قبل تاريخ الإصدار");
+    const supabase = await createClient();
+    const typeId = v.custom_type?.trim() ? await ensureType(v.custom_type) : v.type_id;
+    if (!typeId) throw new Error("اختر نوع المستند أو اكتب نوعاً جديداً");
+    const { data: cur } = await supabase.from("documents").select("client_id,group_id").eq("id", id).single();
+    if (!cur) throw new Error("المستند غير موجود");
+    if (v.transaction_id) {
+      const { data: t } = await supabase.from("transactions").select("id").eq("id", v.transaction_id).eq("client_id", cur.client_id).maybeSingle();
+      if (!t) throw new Error("هذه المعاملة لا تتبع هذا العميل");
+    }
+    const { error } = await supabase.from("documents").update({
+      title: v.title, type_id: typeId, issue_date: emptyToNull(v.issue_date ?? undefined), expiry_date: emptyToNull(v.expiry_date ?? undefined),
+      transaction_id: emptyToNull(v.transaction_id ?? undefined), folder: cleanFolder(v.folder), tag: emptyToNull(v.tag?.trim() || undefined),
+    }).eq("id", id);
+    if (error) throw error;
+    ["/alerts", "/documents", "/dashboard", `/clients/${cur.client_id}`].forEach((p) => revalidatePath(p));
+  });
+}
+
+/** Move documents (with their older versions) to another client, optionally into one of that client's transactions. */
+export async function moveDocuments(ids: string[], clientId: string, transactionId: string | null) {
+  return safe(async () => {
+    await requireAction("docs.write");
+    if (!ids.length) throw new Error("اختر مستنداً واحداً على الأقل");
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("move_documents", { p_ids: ids, p_client: clientId, p_txn: transactionId });
+    if (error) throw error;
+    ["/alerts", "/documents", "/clients", "/transactions", "/dashboard"].forEach((p) => revalidatePath(p));
+    return { moved: Number(data ?? 0) };
+  });
+}
+
+export async function listClientTransactions(clientId: string) {
+  return safe(async () => {
+    await requireAction();
+    const supabase = await createClient();
+    const { data } = await supabase.from("transactions_list").select("id,ref_no,title").eq("client_id", clientId).order("created_at", { ascending: false }).limit(100);
+    return (data ?? []).map((t) => ({ id: t.id as string, label: `${t.ref_no} — ${t.title}` }));
+  });
+}
+
+/** Finds a client by exact name (any kind) or creates it. Used when importing a folder per client. */
+export async function ensureClient(name: string, kind: "individual" | "company" | "sponsor", parentId?: string | null) {
+  return safe(async () => {
+    const s = await requireAction("clients.write");
+    const n = name.trim().replace(/\s+/g, " ");
+    if (n.length < 2) throw new Error("اسم العميل قصير");
+    const supabase = await createClient();
+    const { data: found } = await supabase.from("clients").select("id,kind").is("deleted_at", null).ilike("name", n.replace(/[%_]/g, "")).limit(5);
+    const exact = (found ?? [])[0];
+    if (exact) return { id: exact.id as string, created: false };
+    const { data, error } = await supabase.from("clients").insert({ name: n, kind, parent_id: kind === "company" ? null : parentId ?? null, created_by: s.userId }).select("id").single();
+    if (error) throw error;
+    revalidatePath("/clients");
+    return { id: data.id as string, created: true };
   });
 }

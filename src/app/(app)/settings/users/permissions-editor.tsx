@@ -12,6 +12,7 @@ const GROUPS: { title: string; keys: string[] }[] = [
   { title: "الإدارة", keys: ["settings.manage", "users.manage", "audit.view"] },
 ];
 const LABEL = Object.fromEntries(PERMISSIONS.map((p) => [p.key, p.label]));
+const HINT = Object.fromEntries(PERMISSIONS.map((p) => [p.key, (p as { hint?: string }).hint ?? ""]));
 
 export function PermissionsEditor({ id, initial }: { id: string; initial: string[] }) {
   const router = useRouter();
@@ -37,9 +38,9 @@ export function PermissionsEditor({ id, initial }: { id: string; initial: string
           <ul className="divide-y divide-line">
             {g.keys.map((k) => (
               <li key={k}>
-                <label className="flex min-h-12 cursor-pointer items-center gap-3 px-4 py-2 text-[15px] hover:bg-bg">
-                  <input type="checkbox" checked={on.has(k)} onChange={() => toggle(k)} className="size-5 accent-navy" />
-                  {LABEL[k]}
+                <label className="flex min-h-14 cursor-pointer items-start gap-3 px-4 py-2.5 hover:bg-bg">
+                  <input type="checkbox" checked={on.has(k)} onChange={() => toggle(k)} className="mt-1 size-5 shrink-0 accent-navy" />
+                  <span><span className="block text-[15px] font-medium">{LABEL[k]}</span><span className="block text-sm leading-6 text-ink-3">{HINT[k]}</span></span>
                 </label>
               </li>
             ))}

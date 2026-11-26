@@ -254,3 +254,22 @@ begin
    ((select id from clients where name like 'مؤسسة النخبة%'), (select id from document_types where name = 'رخصة تجارية'), 'رخصة مؤسسة النخبة', current_date - 300, current_date + 65, 'demo/s3.svg', 'image/svg+xml', 20000, '00000000-0000-4000-8000-000000000003');
   perform set_config('request.jwt.claim.sub', '', false);
 end $$;
+
+-- employees inside a company file, folders and a classification tag
+insert into clients(name, kind, phone, parent_id) values
+ ('أحمد سالم الظاهري','individual','0507001001',(select id from clients where name like 'شركة النور%')),
+ ('ماريا سانتوس','individual','0507001002',(select id from clients where name like 'شركة النور%')),
+ ('جمال حسين','individual','0507001003',(select id from clients where name like 'شركة الخليج%'));
+insert into document_types(name, tracks_expiry, sort_order) values ('شهادة تأمين مركبة', true, 100) on conflict do nothing;
+do $$
+declare u uuid := '00000000-0000-4000-8000-000000000003';
+begin
+  perform set_config('request.jwt.claim.sub', u::text, false);
+  insert into documents(client_id, type_id, title, issue_date, expiry_date, storage_path, mime_type, size_bytes, uploaded_by, folder, tag) values
+   ((select id from clients where name like 'أحمد سالم%'), (select id from document_types where name = 'إقامة'), 'إقامة أحمد سالم', current_date - 700, current_date + 12, 'demo/e1.svg', 'image/svg+xml', 20000, u, 'الموظفين/أحمد سالم', 'فرع عجمان'),
+   ((select id from clients where name like 'أحمد سالم%'), (select id from document_types where name = 'جواز سفر'), 'جواز أحمد سالم', null, current_date + 800, 'demo/e2.svg', 'image/svg+xml', 20000, u, 'الموظفين/أحمد سالم', 'فرع عجمان'),
+   ((select id from clients where name like 'ماريا سانتوس%'), (select id from document_types where name = 'هوية'), 'هوية ماريا', null, current_date + 45, 'demo/e3.svg', 'image/svg+xml', 20000, u, 'الموظفين/ماريا سانتوس', 'فرع عجمان'),
+   ((select id from clients where name like 'جمال حسين%'), (select id from document_types where name = 'شهادة تأمين مركبة'), 'تأمين سيارة الشركة', null, current_date + 150, 'demo/e4.svg', 'image/svg+xml', 20000, u, 'المركبات', 'أرشيف 2025'),
+   ((select id from clients where name like 'شركة النور%'), (select id from document_types where name = 'عقد إيجار'), 'عقد مستودع النور', null, current_date + 200, 'demo/e5.svg', 'image/svg+xml', 20000, u, 'العقود', 'فرع عجمان');
+  perform set_config('request.jwt.claim.sub', '', false);
+end $$;

@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Field, Input, Select } from "@/components/ui/form";
 import { uploadPrivate } from "@/lib/upload";
+import { CUSTOM_TYPE, DocTypePicker } from "@/components/documents/doc-type-picker";
 import { createDocuments, renewDocument } from "@/modules/documents/actions";
 import { cn } from "@/lib/utils";
 
@@ -43,6 +44,7 @@ export function DocumentUploader({
   const [busy, setBusy] = React.useState(false);
   const [client, setClient] = React.useState(clientId ?? "");
   const [typeId, setTypeId] = React.useState(renewOf?.typeId ?? defaultTypeId ?? types[0]?.id ?? "");
+  const [customType, setCustomType] = React.useState("");
   const [title, setTitle] = React.useState("");
   const [issue, setIssue] = React.useState("");
   const [expiry, setExpiry] = React.useState("");
@@ -66,6 +68,7 @@ export function DocumentUploader({
     if (!files.length) return toast.error("اختر ملفاً واحداً على الأقل");
     if (!client) return toast.error("اختر العميل");
     if (renewOf && !expiry) return toast.error("أدخل تاريخ الانتهاء الجديد");
+    if (typeId === CUSTOM_TYPE && customType.trim().length < 2) return toast.error("اكتب اسم النوع الجديد");
     setBusy(true);
     try {
       const rows: Parameters<typeof createDocuments>[0] = [];
@@ -78,7 +81,8 @@ export function DocumentUploader({
         rows.push({
           client_id: client,
           transaction_id: transactionId ?? null,
-          type_id: typeId,
+          type_id: typeId === CUSTOM_TYPE ? null : typeId,
+          custom_type: typeId === CUSTOM_TYPE ? customType : null,
           title: (files.length === 1 && title.trim()) || f0.name.replace(/\.[^.]+$/, ""),
           issue_date: issue || null,
           expiry_date: expiry || null,
@@ -150,11 +154,7 @@ export function DocumentUploader({
       )}
 
       <div className="grid gap-3 sm:grid-cols-2">
-        <Field label="تصنيف المستند">
-          <Select value={typeId} onChange={(e) => setTypeId(e.target.value)} disabled={!!renewOf}>
-            {types.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
-          </Select>
-        </Field>
+        <DocTypePicker types={types} typeId={typeId} custom={customType} onChange={(t, c) => { setTypeId(t); setCustomType(c); }} disabled={!!renewOf} label="تصنيف المستند" />
         {files.length <= 1 && !renewOf && (
           <Field label="الاسم / الوصف" hint="اختياري، يؤخذ من اسم الملف">
             <Input value={title} onChange={(e) => setTitle(e.target.value)} />

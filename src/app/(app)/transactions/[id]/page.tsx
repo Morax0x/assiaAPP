@@ -55,7 +55,7 @@ export default async function TransactionPage({ params }: { params: Promise<{ id
     supabase.from("transactions").select("internal_notes,renewal_of_document").eq("id", id).single(),
     supabase.rpc("transaction_payments", { p_txn: id }),
     supabase.rpc("payable_accounts"),
-    supabase.from("documents").select("id,group_id,title,type_id,issue_date,expiry_date,is_current,created_at,document_types(name)").eq("transaction_id", id).is("deleted_at", null).order("created_at", { ascending: false }),
+    supabase.from("documents").select("id,group_id,title,type_id,issue_date,expiry_date,is_current,created_at,transaction_id,folder,tag,document_types(name)").eq("transaction_id", id).is("deleted_at", null).order("created_at", { ascending: false }),
     supabase.from("document_types").select("id,name").order("sort_order"),
     supabase.from("clients").select("phone,whatsapp").eq("id", t.client_id).single(),
     supabase.rpc("transaction_history", { p_txn: id }),

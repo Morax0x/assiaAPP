@@ -1,17 +1,17 @@
 export const PERMISSIONS = [
-  { key: "clients.write", label: "إضافة وتعديل العملاء" },
-  { key: "clients.delete", label: "حذف العملاء" },
-  { key: "txn.write", label: "إضافة وتعديل المعاملات" },
-  { key: "txn.delete", label: "حذف المعاملات" },
-  { key: "docs.write", label: "رفع وتعديل المستندات" },
-  { key: "docs.delete", label: "حذف المستندات" },
-  { key: "treasury.view", label: "رؤية رصيد الكاش والبطاقة" },
-  { key: "treasury.write", label: "إدارة الخزينة (مصاريف، تحويلات، جرد)" },
-  { key: "reports.view", label: "تقارير الأرباح والمصاريف" },
-  { key: "share.create", label: "إنشاء روابط المشاركة" },
-  { key: "settings.manage", label: "إدارة الإعدادات" },
-  { key: "users.manage", label: "إدارة الموظفين" },
-  { key: "audit.view", label: "سجل النشاط" },
+  { key: "clients.write", label: "إضافة وتعديل العملاء", hint: "يضيف عملاء جدداً (أفراد، شركات، كفلاء) ويعدّل بياناتهم ويضيف موظفين لملف الشركة" },
+  { key: "clients.delete", label: "حذف العملاء", hint: "يحذف عميلاً (يُنقل إلى سلة المحذوفات ويمكن استرجاعه)" },
+  { key: "txn.write", label: "إضافة وتعديل المعاملات", hint: "ينشئ المعاملات والفواتير وعروض الأسعار، ويسجل الدفعات، ويغيّر مراحل المعاملة" },
+  { key: "txn.delete", label: "حذف المعاملات", hint: "يحذف المعاملات وعروض الأسعار" },
+  { key: "docs.write", label: "رفع وتعديل المستندات", hint: "يرفع المستندات (وجماعياً من مجلد) ويعدّلها وينقلها بين العملاء ويجددها" },
+  { key: "docs.delete", label: "حذف المستندات", hint: "يحذف المستندات" },
+  { key: "treasury.view", label: "رؤية رصيد الكاش والبطاقة", hint: "يرى رصيد الكاش والبطاقة وحركات الخزينة وكشوف الحساب" },
+  { key: "treasury.write", label: "إدارة الخزينة (مصاريف، تحويلات، جرد)", hint: "يسجل المصاريف والتحويلات والجرد ورسوم الجهات الحكومية، ويلغي الحركات" },
+  { key: "reports.view", label: "تقارير الأرباح والمصاريف", hint: "يرى تقارير الأرباح والمصاريف وأعمار الديون" },
+  { key: "share.create", label: "إنشاء روابط المشاركة", hint: "ينشئ روابط مشاركة خارجية لمستندات العملاء ويلغيها" },
+  { key: "settings.manage", label: "إدارة الإعدادات", hint: "يغيّر بيانات المكتب والخدمات والأسعار والحسابات ومواعيد التذكير" },
+  { key: "users.manage", label: "إدارة الموظفين", hint: "يضيف المستخدمين ويعدّل بياناتهم وصلاحياتهم ويوقفهم ويحذفهم" },
+  { key: "audit.view", label: "سجل النشاط", hint: "يرى سجل النشاط: من فعل ماذا ومتى" },
 ] as const;
 
 export type PermKey = (typeof PERMISSIONS)[number]["key"];
@@ -75,3 +75,10 @@ export const PERMISSION_PRESETS = {
   manager: { label: "صلاحيات واسعة", hint: "كل شيء تقريباً بما فيه الخزينة والتقارير والمستخدمين", keys: PERMISSIONS.map((p) => p.key) },
   viewer: { label: "عرض فقط", hint: "يرى فقط ولا يضيف ولا يعدّل", keys: [] as string[] },
 } as const;
+
+/** Short names used in one-line summaries of what a person can do. */
+export const PERMISSION_SHORT: Record<string, string> = {
+  "clients.write": "العملاء", "txn.write": "المعاملات والفواتير", "docs.write": "المستندات", "share.create": "المشاركة",
+  "treasury.view": "رؤية الخزينة", "treasury.write": "تسجيل المصاريف", "reports.view": "التقارير", "settings.manage": "الإعدادات",
+  "users.manage": "إدارة المستخدمين", "audit.view": "سجل النشاط", "clients.delete": "حذف العملاء", "txn.delete": "حذف المعاملات", "docs.delete": "حذف المستندات",
+};
