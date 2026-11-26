@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { isPg, SESSION_COOKIE } from "@/lib/mode";
 
 const PUBLIC = ["/login", "/share", "/manifest.webmanifest", "/sw.js", "/icons", "/api/cron", "/api/share", "/enter"];
 
@@ -9,6 +10,23 @@ export async function middleware(request: NextRequest) {
     if (pathname === "/login" || pathname === "/") {
       const url = request.nextUrl.clone();
       url.pathname = "/dashboard";
+      return NextResponse.redirect(url);
+    }
+    return NextResponse.next();
+  }
+  if (isPg()) {
+    const has = !!request.cookies.get(SESSION_COOKIE)?.value;
+    const pub = PUBLIC.some((p) => pathname === p || pathname.startsWith(p + "/"));
+    if (!has && !pub) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/login";
+      url.searchParams.set("next", pathname);
+      return NextResponse.redirect(url);
+    }
+    if (has && (pathname === "/login" || pathname === "/")) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/dashboard";
+      url.search = "";
       return NextResponse.redirect(url);
     }
     return NextResponse.next();

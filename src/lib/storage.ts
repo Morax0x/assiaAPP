@@ -2,6 +2,7 @@ import "server-only";
 import { GetObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { isPg } from "@/lib/mode";
 
 /**
  * File storage. If the S3_* variables are set, files live in any S3-compatible bucket
@@ -48,6 +49,7 @@ export async function signedDownload(path: string, opts: { seconds?: number; dow
       { expiresIn: seconds },
     );
   }
+  if (isPg()) throw new Error("تخزين الملفات غير مضبوط. أضف متغيرات S3_ في الإعدادات.");
   const { data, error } = await createAdminClient().storage.from("vault").createSignedUrl(path, seconds, opts.downloadName ? { download: opts.downloadName } : undefined);
   if (error || !data) throw new Error("تعذر إنشاء رابط الملف");
   return data.signedUrl;

@@ -2,6 +2,7 @@
 import { requireAction } from "@/lib/auth";
 import { safe, type Result } from "@/lib/action";
 import { presignUpload, storageMode } from "@/lib/storage";
+import { isPg } from "@/lib/mode";
 
 export type UploadTarget = { mode: "s3"; url: string } | { mode: "supabase" };
 
@@ -13,6 +14,7 @@ export async function getUploadTarget(path: string, contentType: string): Promis
     if (!okPrefix) throw new Error("مسار الملف غير صالح");
     const allowed = path.startsWith("clients/") ? s.perms.has("docs.write") : s.perms.has("docs.write") || s.perms.has("treasury.write") || s.perms.has("txn.write");
     if (!allowed) throw new Error("لا تملك صلاحية رفع الملفات");
+    if (isPg() && storageMode() !== "s3") throw new Error("تخزين الملفات غير مضبوط. أضف متغيرات S3_ في الإعدادات.");
     if (storageMode() === "s3") return { mode: "s3" as const, url: await presignUpload(path, contentType || "application/octet-stream") };
     return { mode: "supabase" as const };
   });

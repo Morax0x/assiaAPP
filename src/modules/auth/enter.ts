@@ -7,6 +7,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAction } from "@/lib/auth";
 import { safe, type Result } from "@/lib/action";
 import { hashPin, newToken, siteUrl, verifyPin } from "@/lib/share";
+import { signInAs } from "@/lib/sign-in-as";
 
 const DEMO = () => process.env.DEMO_MODE === "1";
 const MAX_TRIES = 5;
@@ -114,14 +115,8 @@ export async function enterWithPin(token: string, userId: string, pin: string, p
       await admin.from("user_pins").update({ attempts: 0, locked_until: null }).eq("user_id", userId);
     }
 
-    const { data: u } = await admin.auth.admin.getUserById(userId);
-    const email = u?.user?.email;
-    if (!email) return { error: "تعذر تجهيز الدخول. تواصل مع المكتب." };
-    const { data: gl, error } = await admin.auth.admin.generateLink({ type: "magiclink", email });
-    const hashed = gl?.properties?.hashed_token;
-    if (error || !hashed) return { error: "تعذر تجهيز الدخول. حاول مرة أخرى." };
-    const { error: ve } = await (await createClient()).auth.verifyOtp({ type: "magiclink", token_hash: hashed });
-    if (ve) return { error: "تعذر تسجيل الدخول. حاول مرة أخرى." };
+    const r = await signInAs(userId);
+    if (r.error) return { error: r.error };
   } catch (e) {
     if (e && typeof e === "object" && "digest" in e) throw e;   // redirect
     return { error: "حدث خطأ غير متوقع. حاول مرة أخرى." };
