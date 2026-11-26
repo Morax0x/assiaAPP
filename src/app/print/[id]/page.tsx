@@ -19,7 +19,7 @@ export default async function PrintPage({ params, searchParams }: { params: Prom
   const { id } = await params;
   const sp = await searchParams;
   const kind = sp.type === "receipt" ? "receipt" : "invoice";
-  const lang: Lang = sp.lang === "ar" || sp.lang === "en" ? sp.lang : "both";
+  const lang: Lang = sp.lang === "en" ? "en" : "ar";
   const s = await requireSession();
   const supabase = await createClient();
 

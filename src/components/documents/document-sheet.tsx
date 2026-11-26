@@ -35,7 +35,8 @@ function T({ ar, en, lang, className }: { ar: string; en: string; lang: Lang; cl
 
 /** The office's official A4 document (invoice / receipt / quotation) in Arabic, English, or both. */
 export function DocumentSheet({ d }: { d: SheetData }) {
-  const { lang, office: o } = d;
+  const { office: o } = d;
+  const lang: Lang = d.lang === "en" ? "en" : "ar"; // one language per document
   const rtl = lang !== "en";
   const isQuote = d.kind === "quote";
   const showBank = isQuote || (d.kind === "invoice" && (d.remaining ?? 0) > 0);
@@ -53,8 +54,8 @@ export function DocumentSheet({ d }: { d: SheetData }) {
 
       <div className="relative flex flex-1 flex-col px-[14mm] pb-[18mm]" style={{ paddingTop: "60mm" }}>
         <div className="text-center">
-          {lang !== "en" && <div className="f-kufi-bold text-[34px] tracking-wide">{TITLES[d.kind].ar}</div>}
-          {lang !== "ar" && <div className={`f-garet tracking-wide ${lang === "en" ? "text-[44px]" : "text-[40px]"}`} dir="ltr">{TITLES[d.kind].en}</div>}
+          {lang === "ar" && <div className="f-kufi-bold text-[34px] tracking-wide">{TITLES[d.kind].ar}</div>}
+          {lang === "en" && <div className={`f-garet tracking-wide ${lang === "en" ? "text-[44px]" : "text-[40px]"}`} dir="ltr">{TITLES[d.kind].en}</div>}
           {d.draft && <div className="mt-1 text-sm font-semibold text-[#f15a27]">{lang === "en" ? "DRAFT" : "مسودة"}</div>}
         </div>
 
@@ -96,7 +97,7 @@ export function DocumentSheet({ d }: { d: SheetData }) {
               {d.kind !== "receipt" ? d.items.map((i, k) => (
                 <tr key={k} className="align-top">
                   <td className="py-2.5 num text-[12px]">{ymd(i.date)}</td>
-                  <td className="py-2.5 pe-2">{desc(i)}{lang === "both" && <><div>{i.description}</div>{i.description_en && <div className="text-[11px] opacity-70" dir="ltr">{i.description_en}</div>}</>}</td>
+                  <td className="py-2.5 pe-2">{desc(i)}</td>
                   <td className="py-2.5 text-center num">{fmt(i.price)}</td>
                   <td className="py-2.5 text-center num">{fmt(i.qty)}</td>
                   <td className="py-2.5 text-end num">{fmt(i.qty * i.price)}</td>
@@ -141,7 +142,18 @@ export function DocumentSheet({ d }: { d: SheetData }) {
 
         <div className="mt-auto flex items-end justify-between gap-6 pt-8">
           <div className="text-[12.5px]">
-            {showBank && (
+            {showBank && lang === "ar" && (o.iban || o.bank_account_no) && (
+              <div className="mb-3 space-y-1 text-[13px]" dir="rtl">
+                <div className="f-kufi-bold text-[13px]">رقم الحساب البنكي:</div>
+                <ul className="list-disc space-y-1 ps-5 marker:text-black">
+                  {o.bank_name && <li>المصرف: <b>{o.bank_name}</b></li>}
+                  {o.bank_account_name && <li>اسم الحساب: <b>{o.bank_account_name}</b></li>}
+                  {o.iban && <li>ايبان الحساب: <b className="f-garet" dir="ltr" style={{ fontWeight: 700 }}>{o.iban}</b></li>}
+                  {o.bank_account_no && <li>رقم الحساب: <b className="f-garet" dir="ltr">{o.bank_account_no}</b></li>}
+                </ul>
+              </div>
+            )}
+            {showBank && !(lang === "ar" && (o.iban || o.bank_account_no)) && (
               // eslint-disable-next-line @next/next/no-img-element
               <img src="/brand/bank.png" alt="Bank transfer details" className="mb-3" style={{ width: "78mm", height: "auto", mixBlendMode: "multiply" }} />
             )}

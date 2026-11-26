@@ -40,8 +40,8 @@ export function QuoteForm({
           )}
           {mode === "quote" && <Field label="صالح حتى"><DateField name="valid_until" defaultValue={defaultValid} /></Field>}
           <Field label={mode === "invoice" ? "لغة الفاتورة عند الطباعة" : "لغة العرض عند الطباعة"}>
-            <Select name="lang" defaultValue={initial.lang ?? "both"}>
-              <option value="both">عربي + English</option><option value="ar">العربية فقط</option><option value="en">English only</option>
+            <Select name="lang" defaultValue={initial.lang === "en" ? "en" : "ar"}>
+              <option value="ar">العربية</option><option value="en">English</option>
             </Select>
           </Field>
         </div>

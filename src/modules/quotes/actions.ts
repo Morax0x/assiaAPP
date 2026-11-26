@@ -9,7 +9,7 @@ import { itemTotals, parseItems } from "@/lib/items";
 
 const schema = z.object({
   client_id: z.string().optional(), client_name: z.string().optional(), client_phone: z.string().optional(),
-  valid_until: z.string().optional(), lang: z.enum(["ar", "en", "both"]).default("both"),
+  valid_until: z.string().optional(), lang: z.enum(["ar", "en"]).default("ar"),
   discount: z.coerce.number().min(0, "الخصم لا يمكن أن يكون سالباً").default(0),
   notes: z.string().optional(), internal_notes: z.string().optional(),
 });

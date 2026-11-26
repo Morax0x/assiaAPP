@@ -30,12 +30,14 @@ const KINDS = [
   { key: "company", label: "شركات", icon: Building2 },
   { key: "sponsor", label: "كفلاء", icon: ShieldCheck },
 ] as const;
+const AR_DIGITS = "٠١٢٣٤٥٦٧٨٩";
+const norm = (s: string) => s.replace(/[ً-ٰٟـ]/g, "").replace(/[أإآ]/g, "ا").replace(/ة/g, "ه").replace(/ى/g, "ي").replace(/[٠-٩]/g, (d) => String(AR_DIGITS.indexOf(d))).toLowerCase();
 const KIND_LABEL: Record<string, string> = { individual: "أفراد", company: "شركات", sponsor: "كفلاء" };
 
 /** Location in the folder tree. Parts: "k:<kind>", "c:<clientId>", "e" (the employees folder of a company), "d:<folder name>". */
 type Loc = string[];
 
-function FolderTile({ icon: Icon, name, count, alert, dim, onClick }: { icon: typeof Folder; name: string; count: number; alert?: { expired: number; critical: number }; dim?: boolean; onClick: () => void }) {
+function FolderTile({ icon: Icon, name, count, alert, dim, hint, onClick }: { icon: typeof Folder; name: string; hint?: string; count: number; alert?: { expired: number; critical: number }; dim?: boolean; onClick: () => void }) {
   return (
     <button
       type="button" onClick={onClick}
@@ -44,6 +46,7 @@ function FolderTile({ icon: Icon, name, count, alert, dim, onClick }: { icon: ty
       <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-navy-soft text-navy"><Icon className="size-6" strokeWidth={1.6} /></span>
       <span className="min-w-0 flex-1">
         <span className="block truncate text-[15px] font-semibold" dir="auto">{name}</span>
+        {hint && <span className="block truncate text-xs text-ink-3" dir="auto">{hint}</span>}
         <span className="mt-0.5 flex flex-wrap items-center gap-x-2 text-xs text-ink-3">
           <span><b className="num">{count}</b> مستند</span>
           {alert && alert.expired > 0 && <span className="font-medium text-bad"><span className="num">{alert.expired}</span> منتهي</span>}
@@ -63,6 +66,7 @@ export function DocumentsLibrary({
   const [status, setStatus] = React.useState("");
   const [tag, setTag] = React.useState("");
   const [panel, setPanel] = React.useState(false);
+  const [wide, setWide] = React.useState(false);
   const [loc, setLoc] = React.useState<Loc>([]);
 
   const tags = React.useMemo(() => [...new Set(docs.map((d) => d.tag).filter(Boolean) as string[])].sort((a, b) => a.localeCompare(b, "ar")), [docs]);
@@ -86,7 +90,40 @@ export function DocumentsLibrary({
     return { expired, critical: crit };
   }, [critical]);
 
-  const searching = q.trim() !== "" || !!type || !!status || !!tag;
+  const filtersOn = !!type || !!status || !!tag;
+  const nameSearch = q.trim() !== "" && !wide && !filtersOn; // plain search: look at folder names only
+  const searching = (q.trim() !== "" && !nameSearch) || filtersOn;
+  const locFor = React.useCallback((id: string, dirs: string[] = []): Loc => {
+    const c = clientById.get(id);
+    if (!c) return [];
+    const parent = c.parent_id ? clientById.get(c.parent_id) : undefined;
+    const base = parent ? [`k:${parent.kind}`, `c:${parent.id}`, "e", `c:${c.id}`] : [`k:${c.kind}`, `c:${c.id}`];
+    return [...base, ...dirs.map((d) => `d:${d}`)];
+  }, [clientById]);
+  const folderHits = React.useMemo(() => {
+    if (!nameSearch) return [];
+    const t = norm(q.trim());
+    const hits: { key: string; name: string; hint: string; count: number; loc: Loc; folder: boolean }[] = [];
+    const pathOf = (c: MoveTarget) => { const p = c.parent_id ? clientById.get(c.parent_id) : undefined; return [KIND_LABEL[(p ?? c).kind], p?.name].filter(Boolean).join(" › "); };
+    moveTargets.forEach((c) => {
+      if (norm(c.name).includes(t)) hits.push({ key: `c${c.id}`, name: c.name, hint: pathOf(c), count: allOf(c.id).length, loc: locFor(c.id), folder: false });
+    });
+    const seen = new Set<string>();
+    docs.forEach((d) => {
+      const segs = (d.folder ?? "").split("/").filter(Boolean);
+      segs.forEach((seg, i) => {
+        if (!norm(seg).includes(t)) return;
+        const key = `${d.client_id}|${segs.slice(0, i + 1).join("/")}`;
+        if (seen.has(key)) return;
+        seen.add(key);
+        const c = clientById.get(d.client_id);
+        hits.push({ key: `f${key}`, name: seg, hint: `${c ? pathOf(c) + " › " : ""}${d.client_name}${i ? " › " + segs.slice(0, i).join(" › ") : ""}`, count: 0, loc: locFor(d.client_id, segs.slice(0, i + 1)), folder: true });
+      });
+    });
+    const prefixOf = (h: (typeof hits)[number]) => h.loc.filter((p) => p.startsWith("d:")).map((p) => p.slice(2)).join("/");
+    hits.forEach((h) => { if (h.folder) { const cid = h.loc.filter((p) => p.startsWith("c:")).pop()!.slice(2); const pre = prefixOf(h); h.count = (byClient.get(cid) ?? []).filter((d) => { const f = (d.folder ?? "").split("/").filter(Boolean).join("/"); return f === pre || f.startsWith(pre + "/"); }).length; } });
+    return hits.slice(0, 80);
+  }, [nameSearch, q, moveTargets, docs, clientById, allOf, locFor, byClient]);
   const results = React.useMemo(() => {
     if (!searching) return [];
     const t = q.trim().toLowerCase();
@@ -234,17 +271,21 @@ export function DocumentsLibrary({
         <div className="flex gap-2">
           <div className={`relative min-w-0 flex-1 ${panel ? "block" : "hidden md:block"}`}>
             <Search className="pointer-events-none absolute start-3 top-1/2 size-4 -translate-y-1/2 text-ink-3" strokeWidth={1.75} />
-            <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="ابحث باسم المستند أو العميل أو المجلد" className="ps-9" />
+            <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder={wide ? "بحث موسع: المجلدات وأسماء المستندات" : "ابحث باسم مجلد أو عميل"} className="ps-9" />
           </div>
-          <Button type="button" variant={panel || searching ? "primary" : "outline"} onClick={() => setPanel((v) => !v)} className={panel ? "" : "w-full md:w-auto"} aria-expanded={panel}>
+          <Button type="button" variant={panel || searching || nameSearch ? "primary" : "outline"} onClick={() => setPanel((v) => !v)} className={panel ? "" : "w-full md:w-auto"} aria-expanded={panel}>
             <SlidersHorizontal /> {panel ? "إخفاء" : "بحث وتصفية"}{searching && !panel ? " •" : ""}
           </Button>
-          {searching && (
-            <Button type="button" variant="outline" onClick={() => { setQ(""); setType(""); setStatus(""); setTag(""); }} aria-label="مسح البحث"><X /></Button>
+          {(searching || nameSearch) && (
+            <Button type="button" variant="outline" onClick={() => { setQ(""); setType(""); setStatus(""); setTag(""); setWide(false); }} aria-label="مسح البحث"><X /></Button>
           )}
         </div>
         {panel && (
           <div className="grid gap-2 rounded-card border border-line bg-surface p-3 sm:grid-cols-3">
+            <label className="flex items-center gap-2 text-[15px] sm:col-span-3">
+              <input type="checkbox" checked={wide} onChange={(e) => setWide(e.target.checked)} className="size-5 accent-navy" />
+              بحث موسع: يبحث أيضاً في أسماء المستندات داخل المجلدات
+            </label>
             <Select value={type} onChange={(e) => setType(e.target.value)} aria-label="النوع"><option value="">كل الأنواع</option>{types.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}</Select>
             <Select value={status} onChange={(e) => setStatus(e.target.value)} aria-label="الحالة">
               <option value="">كل الحالات</option>
@@ -260,7 +301,23 @@ export function DocumentsLibrary({
         )}
       </div>
 
-      {searching ? (
+      {nameSearch ? (
+        folderHits.length === 0 ? (
+          <Card className="p-4 text-center text-[15px] text-ink-2">
+            لا يوجد مجلد بهذا الاسم.
+            <div className="mt-2"><Button type="button" variant="outline" onClick={() => setWide(true)}>ابحث في أسماء المستندات أيضاً</Button></div>
+          </Card>
+        ) : (
+          <div className="space-y-2">
+            <div className="text-xs text-ink-3"><b className="num">{folderHits.length}</b> مجلد <button type="button" className="text-navy hover:underline" onClick={() => setWide(true)}>(بحث موسع في أسماء المستندات)</button></div>
+            <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+              {folderHits.map((h) => (
+                <FolderTile key={h.key} icon={h.folder ? Folder : Users} name={h.name} hint={h.hint} count={h.count} onClick={() => { setLoc(h.loc); setQ(""); }} />
+              ))}
+            </div>
+          </div>
+        )
+      ) : searching ? (
         results.length === 0 ? (
           <Card><Empty icon={<FileText />} title="لا توجد مستندات مطابقة" /></Card>
         ) : (

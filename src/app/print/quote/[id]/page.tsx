@@ -19,7 +19,7 @@ export default async function PrintQuotePage({ params, searchParams }: { params:
     supabase.from("quotes").select("notes").eq("id", id).maybeSingle(),
   ]);
   if (!q || !os) notFound();
-  const lang: Lang = sp.lang === "ar" || sp.lang === "en" || sp.lang === "both" ? sp.lang : (q.lang as Lang);
+  const lang: Lang = sp.lang === "en" || sp.lang === "ar" ? sp.lang : q.lang === "en" ? "en" : "ar";
   const data: SheetData = {
     kind: "quote", lang, office: os, party: { name: q.party_name, phone: q.party_phone },
     number: q.quote_no, date: q.created_at, validUntil: q.valid_until,

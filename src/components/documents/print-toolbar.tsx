@@ -3,7 +3,6 @@ import { ArrowRight, Printer } from "lucide-react";
 import type { Lang } from "@/components/documents/document-sheet";
 
 const LANGS: { key: Lang; label: string }[] = [
-  { key: "both", label: "عربي + English" },
   { key: "ar", label: "العربية" },
   { key: "en", label: "English" },
 ];
