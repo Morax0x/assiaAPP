@@ -321,3 +321,75 @@ export async function deleteDocuments(ids: string[]) {
     return { deleted: done };
   });
 }
+
+/** Makes a new client file and moves the given documents into it (e.g. a folder that should really be a client). */
+export async function convertToClient(ids: string[], name: string, kind: "individual" | "company" | "sponsor", parentId?: string | null) {
+  return safe(async () => {
+    await requireAction("clients.write");
+    await requireAction("docs.write");
+    await requireAction("docs.move");
+    if (!ids.length) throw new Error("لم تحدد مستنداً");
+    const n = name.trim().replace(/\s+/g, " ");
+    if (n.length < 2) throw new Error("اكتب اسم العميل");
+    const supabase = await createClient();
+    const s = await requireAction();
+    let q = supabase.from("clients").select("id").is("deleted_at", null).ilike("name", n.replace(/[%_]/g, ""));
+    q = parentId && kind !== "company" ? q.eq("parent_id", parentId) : q.is("parent_id", null);
+    const { data: found } = await q.limit(1);
+    let clientId = (found ?? [])[0]?.id as string | undefined;
+    const created = !clientId;
+    if (!clientId) {
+      const { data, error } = await supabase.from("clients").insert({ name: n, kind, parent_id: kind === "company" ? null : parentId ?? null, created_by: s.userId }).select("id").single();
+      if (error) throw error;
+      clientId = data.id as string;
+    }
+    const { data: moved, error: me } = await supabase.rpc("move_documents", { p_ids: ids, p_client: clientId, p_txn: null });
+    if (me) throw me;
+    ["/documents", "/clients", "/alerts", "/dashboard"].forEach((x) => revalidatePath(x));
+    return { clientId, created, moved: Number(moved ?? ids.length) };
+  });
+}
+
+/**
+ * Deletes whole client folders: all their documents (and their employees') go to the trash, and the client file itself
+ * is deleted too unless it has transactions or quotes (those are kept, and reported back).
+ */
+export async function deleteClientFolders(clientIds: string[]) {
+  return safe(async () => {
+    await requireAction("docs.delete");
+    await requireAction("clients.delete");
+    const roots = [...new Set(clientIds)].slice(0, 500);
+    if (!roots.length) throw new Error("لم تحدد مجلداً");
+    const supabase = await createClient();
+    const { data: kids } = await supabase.from("clients").select("id,parent_id").is("deleted_at", null).in("parent_id", roots);
+    const all = [...roots, ...((kids ?? []) as { id: string }[]).map((k) => k.id)];
+    const now = new Date().toISOString();
+    for (let i = 0; i < all.length; i += 100) {
+      const { error } = await supabase.from("documents").update({ deleted_at: now }).is("deleted_at", null).in("client_id", all.slice(i, i + 100));
+      if (error) throw error;
+    }
+    const busy = new Set<string>();
+    for (let i = 0; i < all.length; i += 100) {
+      const part = all.slice(i, i + 100);
+      const [{ data: t }, { data: qq }] = await Promise.all([
+        supabase.from("transactions").select("client_id").is("deleted_at", null).in("client_id", part),
+        supabase.from("quotes").select("client_id").is("deleted_at", null).in("client_id", part),
+      ]);
+      [...(t ?? []), ...(qq ?? [])].forEach((r) => busy.add((r as { client_id: string }).client_id));
+    }
+    // a company with employees that must stay keeps its file too
+    all.forEach((id) => { if (busy.has(id)) { const k = ((kids ?? []) as { id: string; parent_id: string }[]).find((x) => x.id === id); if (k) busy.add(k.parent_id); } });
+    let deleted = 0;
+    const kept: string[] = [];
+    for (const id of all) {
+      if (busy.has(id)) { kept.push(id); continue; }
+      const { error } = await supabase.rpc("soft_delete_record", { p_table: "clients", p_id: id });
+      if (error) throw error;
+      deleted++;
+    }
+    let keptNames: string[] = [];
+    if (kept.length) { const { data: nm } = await supabase.from("clients").select("name").in("id", kept.slice(0, 20)); keptNames = (nm ?? []).map((x) => x.name as string); }
+    ["/documents", "/clients", "/alerts", "/dashboard"].forEach((x) => revalidatePath(x));
+    return { deleted, kept: kept.length, keptNames };
+  });
+}

@@ -9,12 +9,13 @@ import { DateField } from "@/components/ui/date-field";
 import { Field, Input, Select } from "@/components/ui/form";
 import { CUSTOM_TYPE, DocTypePicker, type TypeOpt } from "@/components/documents/doc-type-picker";
 import { ConfirmButton } from "@/components/ui/confirm-button";
+import { ConvertToClientDialog } from "@/components/documents/convert-to-client-dialog";
 import { deleteDocument, listClientTransactions, updateDocument } from "@/modules/documents/actions";
 
 export type EditableDoc = { id: string; title: string; type_id: string; issue_date: string | null; expiry_date: string | null; transaction_id?: string | null };
 
 /** Edit a document's name, type (or write a new type), dates, and linked transaction. */
-export function DocumentEditDialog({ doc, clientId, types, iconOnly, folder: folder0 = "", tag: tag0 = "", canDelete = false }: { doc: EditableDoc; clientId: string; types: TypeOpt[]; iconOnly?: boolean; folder?: string; tag?: string; canDelete?: boolean }) {
+export function DocumentEditDialog({ doc, clientId, types, iconOnly, folder: folder0 = "", tag: tag0 = "", canDelete = false, companies }: { doc: EditableDoc; clientId: string; types: TypeOpt[]; iconOnly?: boolean; folder?: string; tag?: string; canDelete?: boolean; companies?: { id: string; name: string }[] }) {
   const router = useRouter();
   const [open, setOpen] = React.useState(false);
   const [title, setTitle] = React.useState(doc.title);
@@ -69,6 +70,7 @@ export function DocumentEditDialog({ doc, clientId, types, iconOnly, folder: fol
               </Select>
             </Field>
           </div>
+          {companies && <div className="rounded-card border border-dashed border-line p-3 text-sm"><div className="mb-2 text-ink-3">هذا المستند يخص عميلاً آخر أو يستحق ملفاً خاصاً به؟</div><ConvertToClientDialog ids={[doc.id]} defaultName={doc.title} companies={companies} label="حوّله إلى ملف عميل جديد" onDone={() => setOpen(false)} /></div>}
           <div className="flex items-center justify-between gap-2">
             {canDelete ? (
               <ConfirmButton type="button" variant="danger" title="حذف المستند" confirmLabel="احذف" message={`سيُحذف «${doc.title}» وينتقل إلى سلة المحذوفات، ويمكن استرجاعه منها.`}

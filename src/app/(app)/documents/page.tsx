@@ -34,7 +34,7 @@ export default async function DocumentsPage() {
         description={`${docs.length} مستند — كل ملفات العملاء والمعاملات في مكان واحد`}
         actions={s.perms.has("docs.write") && <>{s.perms.has("docs.import") && <Button asChild variant="outline"><Link href="/documents/import"><FolderUp /> رفع مجلد كامل</Link></Button>}<Button asChild><Link href="/documents/new"><Upload /> رفع مستندات</Link></Button></>}
       />
-      <DocumentsLibrary docs={docs} types={types ?? []} critical={os?.critical_days ?? 14} canWrite={s.perms.has("docs.write")} canMove={s.perms.has("docs.move")} canDelete={s.perms.has("docs.delete")} canOpen={s.perms.has("docs.open")} moveTargets={(allClients ?? []).map((c) => ({ id: c.id as string, name: c.name as string, kind: c.kind as string, parent_id: (c.parent_id ?? null) as string | null }))} />
+      <DocumentsLibrary docs={docs} types={types ?? []} critical={os?.critical_days ?? 14} canWrite={s.perms.has("docs.write")} canMove={s.perms.has("docs.move")} canDelete={s.perms.has("docs.delete")} canDeleteClients={s.perms.has("docs.delete") && s.perms.has("clients.delete")} canConvert={s.perms.has("clients.write") && s.perms.has("docs.move")} canOpen={s.perms.has("docs.open")} moveTargets={(allClients ?? []).map((c) => ({ id: c.id as string, name: c.name as string, kind: c.kind as string, parent_id: (c.parent_id ?? null) as string | null }))} />
     </>
   );
 }
