@@ -10,7 +10,7 @@ export default async function NewDocumentPage({ searchParams }: { searchParams: 
   const { client } = await searchParams;
   const supabase = await createClient();
   const [{ data: clients }, { data: types }] = await Promise.all([
-    supabase.from("clients").select("id,name").is("deleted_at", null).order("name"),
+    supabase.from("clients").select("id,name,kind").is("deleted_at", null).order("name"),
     supabase.from("document_types").select("id,name").order("sort_order"),
   ]);
   return (

@@ -9,7 +9,7 @@ import {
 import { GROUPS, NAV, type NavItem } from "@/components/layout/nav";
 import { Brand, LogoMark } from "@/components/layout/logo";
 import { CommandPalette } from "@/components/layout/command-palette";
-import { DisplayPanel, TopbarDisplay } from "@/components/layout/theme-controls";
+import { DisplayPanel, FontSizeMini, TopbarDisplay } from "@/components/layout/theme-controls";
 import { cn } from "@/lib/utils";
 import { signOut } from "@/modules/auth/actions";
 
@@ -109,6 +109,7 @@ export function AppShell({ children, perms, user, alertCount }: Props) {
         </div>
         <nav className="flex-1 overflow-y-auto p-2"><NavGroups items={items} path={path} collapsed={collapsed} alertCount={alertCount} /></nav>
         <div className="border-t border-line p-2">
+          {!collapsed && <FontSizeMini />}
           <button
             onClick={toggle}
             className="flex h-9 w-full items-center justify-center gap-2 rounded-ctl text-xs text-ink-3 hover:bg-mute-soft"
@@ -126,7 +127,7 @@ export function AppShell({ children, perms, user, alertCount }: Props) {
             <button className="rounded-md p-2 text-ink-2 hover:bg-mute-soft md:hidden" onClick={() => setDrawer(true)} aria-label="القائمة">
               <Menu className="size-5" strokeWidth={1.75} />
             </button>
-            <div className="md:hidden"><LogoMark className="size-7" /></div>
+            <Link href="/dashboard" className="md:hidden" aria-label="الصفحة الرئيسية"><LogoMark className="size-7" /></Link>
             <button
               onClick={() => setPalette(true)}
               className="ms-auto flex h-10 min-w-0 items-center gap-2 rounded-ctl border border-line bg-bg px-3 text-sm text-ink-3 hover:border-line-strong md:ms-0 md:w-80"
@@ -169,14 +170,14 @@ export function AppShell({ children, perms, user, alertCount }: Props) {
           <div className="absolute inset-0 bg-ink/40" onClick={() => setDrawer(false)} />
           <div className="absolute inset-y-0 start-0 flex w-72 flex-col bg-surface safe-t">
             <div className="flex h-14 items-center justify-between border-b border-line px-4">
-              <Brand />
+              <div onClick={() => setDrawer(false)}><Brand /></div>
               <button onClick={() => setDrawer(false)} className="rounded-md p-1.5 hover:bg-mute-soft" aria-label="إغلاق">
                 <X className="size-5" strokeWidth={1.75} />
               </button>
             </div>
             <nav className="flex-1 overflow-y-auto p-2"><NavGroups items={items} path={path} alertCount={alertCount} /></nav>
             <div className="border-t border-line p-3 safe-b">
-              <DisplayPanel className="mb-4" />
+              <DisplayPanel compact className="mb-3" />
               <div className="mb-2 text-sm font-medium">{user.name}</div>
               <div className="mb-3 text-xs text-ink-3">{user.role}</div>
               <form action={signOut}>

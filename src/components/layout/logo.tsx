@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 import { cn } from "@/lib/utils";
 
 export function LogoMark({ className }: { className?: string }) {
@@ -7,7 +8,7 @@ export function LogoMark({ className }: { className?: string }) {
 
 export function Brand({ compact }: { compact?: boolean }) {
   return (
-    <div className="flex items-center gap-2.5">
+    <Link href="/dashboard" className="flex items-center gap-2.5" aria-label="الصفحة الرئيسية" title="الصفحة الرئيسية">
       <LogoMark />
       {!compact && (
         <div className="leading-tight">
@@ -15,6 +16,6 @@ export function Brand({ compact }: { compact?: boolean }) {
           <div className="text-[11px] text-ink-3">لخدمات رجال الأعمال</div>
         </div>
       )}
-    </div>
+    </Link>
   );
 }

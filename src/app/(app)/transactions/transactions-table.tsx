@@ -3,6 +3,7 @@ import { DateField } from "@/components/ui/date-field";
 import * as React from "react";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Search } from "lucide-react";
+import { FilterPanel } from "@/components/ui/filter-panel";
 import { DataTable } from "@/components/data-table/data-table";
 import { Input, Select } from "@/components/ui/form";
 import { Badge, STATUS_TONE } from "@/components/ui/badge";
@@ -33,6 +34,10 @@ export function TransactionsTable({ rows, clients, staff }: { rows: TxnRow[]; cl
       (!t || r.ref_no.toLowerCase().includes(t) || r.title.toLowerCase().includes(t) || r.client_name.toLowerCase().includes(t)));
   }, [rows, q, status, pay, client, assignee, from, to]);
 
+  const sums = React.useMemo(() => ({ total: data.reduce((a, r) => a + Number(r.total), 0), remaining: data.reduce((a, r) => a + Number(r.remaining), 0) }), [data]);
+  const active = !!(q || status || pay || client || assignee || from || to);
+  const clear = () => { setQ(""); setStatus(""); setPay(""); setClient(""); setAssignee(""); setFrom(""); setTo(""); };
+
   const columns = React.useMemo<ColumnDef<TxnRow, unknown>[]>(() => [
     { accessorKey: "ref_no", header: "الرقم", cell: ({ getValue }) => <span className="font-medium num">{getValue() as string}</span> },
     { accessorKey: "client_name", header: "العميل" },
@@ -47,6 +52,7 @@ export function TransactionsTable({ rows, clients, staff }: { rows: TxnRow[]; cl
 
   return (
     <div className="space-y-3">
+      <FilterPanel active={active} onClear={clear}>
       <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
         <div className="relative sm:col-span-2 lg:col-span-4">
           <Search className="pointer-events-none absolute start-3 top-1/2 size-4 -translate-y-1/2 text-ink-3" strokeWidth={1.75} />
@@ -70,6 +76,12 @@ export function TransactionsTable({ rows, clients, staff }: { rows: TxnRow[]; cl
         </Select>
         <label className="flex items-center gap-2 text-xs text-ink-3">من <DateField value={from} onChange={setFrom} ariaLabel="من تاريخ" /></label>
         <label className="flex items-center gap-2 text-xs text-ink-3">إلى <DateField value={to} onChange={setTo} ariaLabel="إلى تاريخ" /></label>
+      </div>
+      </FilterPanel>
+      <div className="flex flex-wrap gap-2 text-sm">
+        <span className="rounded-full bg-navy-soft px-3 py-1 font-medium text-navy"><b className="num">{data.length}</b> معاملة</span>
+        <span className="rounded-full bg-mute-soft px-3 py-1 text-ink-2">الإجمالي <b className="num">{money(sums.total)}</b></span>
+        {sums.remaining > 0 && <span className="rounded-full bg-bad-soft px-3 py-1 text-bad">المتبقي <b className="num">{money(sums.remaining)}</b></span>}
       </div>
       <DataTable
         columns={columns} data={data} rowHref={(r) => `/transactions/${r.id}`} emptyTitle="لا توجد معاملات مطابقة"

@@ -9,14 +9,15 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Field, Input, Select } from "@/components/ui/form";
 import { uploadPrivate } from "@/lib/upload";
+import { MAX_FILE_BYTES, readableKey } from "@/lib/keys";
 import { CUSTOM_TYPE, DocTypePicker } from "@/components/documents/doc-type-picker";
 import { createDocuments, renewDocument } from "@/modules/documents/actions";
 import { cn } from "@/lib/utils";
 
 export type DocType = { id: string; name: string };
-export type ClientOpt = { id: string; name: string };
+export type ClientOpt = { id: string; name: string; kind?: string };
 
-const MAX = 15 * 1024 * 1024;
+const MAX = MAX_FILE_BYTES;
 const ACCEPT = { "application/pdf": [".pdf"], "image/*": [".jpg", ".jpeg", ".png", ".webp", ".heic"], "application/msword": [".doc"], "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [".docx"] };
 
 async function prepare(file: File): Promise<File> {
@@ -29,11 +30,12 @@ async function prepare(file: File): Promise<File> {
 }
 
 export function DocumentUploader({
-  types, clients, clientId, transactionId, renewOf, onDone, defaultTypeId,
+  types, clients, clientId, clientInfo, transactionId, renewOf, onDone, defaultTypeId,
 }: {
   types: DocType[];
   clients?: ClientOpt[];
   clientId?: string;
+  clientInfo?: ClientOpt;
   transactionId?: string;
   renewOf?: { id: string; typeId: string };
   onDone?: () => void;
@@ -53,6 +55,7 @@ export function DocumentUploader({
 
   const add = React.useCallback((list: File[]) => {
     const ok = list.filter((f) => {
+      if (f.size === 0) { toast.error(`${f.name}: الملف فارغ (0 بايت) ولا يمكن رفعه`); return false; }
       if (f.size > MAX * 3) { toast.error(`${f.name}: الملف كبير جداً`); return false; }
       return true;
     });
@@ -74,10 +77,13 @@ export function DocumentUploader({
       const rows: Parameters<typeof createDocuments>[0] = [];
       for (const f0 of files) {
         const f = await prepare(f0);
-        if (f.size > MAX) throw new Error(`${f0.name}: يتجاوز 15 ميغابايت بعد الضغط`);
+        if (f.size > MAX) throw new Error(`${f0.name}: يتجاوز 25 ميغابايت بعد الضغط`);
         const ext = (f0.name.split(".").pop() || "bin").toLowerCase().replace(/[^a-z0-9]/g, "");
         const path = `clients/${client}/${crypto.randomUUID()}.${ext}`;
-        try { await uploadPrivate(path, f, f.type || undefined); } catch (e) { throw new Error(`فشل رفع ${f0.name}: ${e instanceof Error ? e.message : ""}`); }
+        const ci = [...(clients ?? []), ...(clientInfo ? [clientInfo] : [])].find((c) => c.id === client);
+        const readable = ci?.kind ? readableKey({ kind: ci.kind, name: ci.name, fileName: f0.name }) : undefined;
+        let stored = path;
+        try { stored = await uploadPrivate(path, f, f.type || undefined, readable); } catch (e) { throw new Error(`فشل رفع ${f0.name}: ${e instanceof Error ? e.message : ""}`); }
         rows.push({
           client_id: client,
           transaction_id: transactionId ?? null,
@@ -86,7 +92,7 @@ export function DocumentUploader({
           title: (files.length === 1 && title.trim()) || f0.name.replace(/\.[^.]+$/, ""),
           issue_date: issue || null,
           expiry_date: expiry || null,
-          storage_path: path,
+          storage_path: stored,
           mime_type: f.type || "application/octet-stream",
           size_bytes: f.size,
         });
@@ -127,7 +133,7 @@ export function DocumentUploader({
         <input {...getInputProps()} />
         <FileUp className="mx-auto mb-2 size-7 text-ink-3" strokeWidth={1.5} />
         <p className="text-sm text-ink-2">اسحب الملفات وأفلتها هنا</p>
-        <p className="mt-0.5 text-xs text-ink-3">PDF، صور، مستندات — حتى 15 ميغابايت للملف، وتُضغط الصور تلقائياً</p>
+        <p className="mt-0.5 text-xs text-ink-3">PDF، صور، مستندات — حتى 25 ميغابايت للملف، وتُضغط الصور تلقائياً</p>
         <div className="mt-3 flex flex-wrap justify-center gap-2">
           <Button type="button" variant="outline" size="sm" onClick={open}><FileUp /> اختيار ملفات</Button>
           <Button type="button" variant="outline" size="sm" onClick={() => cameraRef.current?.click()}><Camera /> تصوير بالكاميرا</Button>

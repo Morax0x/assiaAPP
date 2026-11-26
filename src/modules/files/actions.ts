@@ -1,13 +1,22 @@
 "use server";
 import { requireAction } from "@/lib/auth";
 import { safe, type Result } from "@/lib/action";
-import { presignUpload, storageMode } from "@/lib/storage";
+import { objectExists, presignUpload, storageMode } from "@/lib/storage";
 import { isPg } from "@/lib/mode";
 
-export type UploadTarget = { mode: "s3"; url: string } | { mode: "supabase" };
+export type UploadTarget = { mode: "s3"; url: string; path: string } | { mode: "supabase"; path: string };
 
-/** Asks the server where the browser should upload a file. Only office staff with the right permission get a link. */
-export async function getUploadTarget(path: string, contentType: string): Promise<Result<UploadTarget>> {
+const okReadable = (k: string) => k.length > 0 && k.length <= 500 && !k.startsWith("/") && !k.includes("..") && !/[\\\u0000-\u001f]/.test(k) && !/^(receipts|expenses|healthcheck)\//.test(k);
+function withSuffix(key: string, n: number) {
+  const i = key.lastIndexOf("."), slash = key.lastIndexOf("/");
+  return i > slash + 1 ? `${key.slice(0, i)} (${n})${key.slice(i)}` : `${key} (${n})`;
+}
+
+/**
+ * Asks the server where the browser should upload a file. Only office staff with the right permission get a link.
+ * In an S3 bucket the file is stored under a readable name (أفراد/اسم العميل/...) and an existing file is never overwritten.
+ */
+export async function getUploadTarget(path: string, contentType: string, readable?: string): Promise<Result<UploadTarget>> {
   return safe(async () => {
     const s = await requireAction();
     const okPrefix = /^(clients\/[0-9a-f-]{36}|receipts|expenses)\/[0-9a-f-]{36}\.[a-z0-9]{1,8}$/.test(path);
@@ -15,8 +24,16 @@ export async function getUploadTarget(path: string, contentType: string): Promis
     const allowed = path.startsWith("clients/") ? s.perms.has("docs.write") : s.perms.has("docs.write") || s.perms.has("treasury.write") || s.perms.has("txn.write");
     if (!allowed) throw new Error("لا تملك صلاحية رفع الملفات");
     if (isPg() && storageMode() !== "s3") throw new Error("تخزين الملفات غير مضبوط. أضف متغيرات S3_ في الإعدادات.");
-    if (storageMode() === "s3") return { mode: "s3" as const, url: await presignUpload(path, contentType || "application/octet-stream") };
-    return { mode: "supabase" as const };
+    if (storageMode() === "s3") {
+      let key = path;
+      if (readable && path.startsWith("clients/")) {
+        if (!okReadable(readable)) throw new Error("اسم الملف غير صالح");
+        key = readable;
+        for (let n = 2; n < 60 && (await objectExists(key)); n++) key = withSuffix(readable, n);
+      }
+      return { mode: "s3" as const, url: await presignUpload(key, contentType || "application/octet-stream"), path: key };
+    }
+    return { mode: "supabase" as const, path };
   });
 }
 

@@ -7,15 +7,20 @@ function fail(msg: string, detail?: string): never {
   throw new Error(msg);
 }
 
-/** Uploads a file to private storage (S3-compatible bucket, or Supabase if none is configured). Throws a clear message on failure. */
-export async function uploadPrivate(path: string, file: Blob, contentType?: string) {
+/**
+ * Uploads a file to private storage and returns the path it was stored under.
+ * `readable` is the human-readable name (أفراد/اسم العميل/مجلد/ملف.pdf), used when the storage is an S3 bucket.
+ */
+export async function uploadPrivate(path: string, file: Blob, contentType?: string, readable?: string): Promise<string> {
+  if (file.size === 0) fail("الملف فارغ (0 بايت) ولا يمكن رفعه", path);
   const type = contentType || (file as File).type || "application/octet-stream";
-  const t = await getUploadTarget(path, type);
+  const t = await getUploadTarget(path, type, readable);
   if (!t.ok) fail(t.error, "getUploadTarget");
-  if (t.data!.mode === "s3") {
+  const target = t.data!;
+  if (target.mode === "s3") {
     let res: Response;
     try {
-      res = await fetch((t.data as { url: string }).url, { method: "PUT", body: file, headers: { "Content-Type": type } });
+      res = await fetch(target.url, { method: "PUT", body: file, headers: { "Content-Type": type } });
     } catch (e) {
       // The browser blocked the request: almost always the bucket's CORS rule.
       fail("تعذر الوصول إلى مخزن الملفات. غالباً قاعدة CORS في Cloudflare R2 ناقصة أو لا تحتوي عنوان موقعك بالضبط.", String(e));
@@ -29,8 +34,9 @@ export async function uploadPrivate(path: string, file: Blob, contentType?: stri
         code === "NoSuchBucket" ? "اسم الـ Bucket خطأ" : "راجع إعدادات التخزين";
       fail(`فشل رفع الملف إلى المخزن (${code}): ${hint}`, body.slice(0, 600));
     }
-    return;
+    return target.path;
   }
-  const { error } = await createClient().storage.from("vault").upload(path, file, { contentType: type, upsert: false });
+  const { error } = await createClient().storage.from("vault").upload(target.path, file, { contentType: type, upsert: false });
   if (error) fail(error.message || "فشل رفع الملف", "supabase");
+  return target.path;
 }

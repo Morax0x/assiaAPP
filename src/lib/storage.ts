@@ -1,5 +1,5 @@
 import "server-only";
-import { DeleteObjectCommand, GetObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { DeleteObjectCommand, DeleteObjectsCommand, GetObjectCommand, HeadObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isPg } from "@/lib/mode";
@@ -72,4 +72,27 @@ export async function storageSelfTest() {
   await step("قراءة الملف", async () => { const r = await s3().send(new GetObjectCommand({ Bucket: e.bucket, Key: key })); await r.Body?.transformToString(); });
   await step("حذف الملف التجريبي", () => s3().send(new DeleteObjectCommand({ Bucket: e.bucket, Key: key })));
   return out;
+}
+
+/** True if an object already exists under this key (so we never overwrite someone's file). */
+export async function objectExists(key: string): Promise<boolean> {
+  try { await s3().send(new HeadObjectCommand({ Bucket: env().bucket, Key: key })); return true; }
+  catch (e) {
+    const x = e as { name?: string; $metadata?: { httpStatusCode?: number } };
+    if (x.name === "NotFound" || x.$metadata?.httpStatusCode === 404) return false;
+    throw e;
+  }
+}
+
+/** Deletes stored files (S3 bucket or Supabase vault). Returns how many were requested. */
+export async function deleteStoredFiles(keys: string[]): Promise<number> {
+  const list = [...new Set(keys.filter(Boolean))];
+  if (storageMode() === "s3") {
+    for (let i = 0; i < list.length; i += 1000) {
+      await s3().send(new DeleteObjectsCommand({ Bucket: env().bucket, Delete: { Objects: list.slice(i, i + 1000).map((Key) => ({ Key })), Quiet: true } }));
+    }
+  } else if (!isPg()) {
+    for (let i = 0; i < list.length; i += 100) await createAdminClient().storage.from("vault").remove(list.slice(i, i + 100));
+  }
+  return list.length;
 }

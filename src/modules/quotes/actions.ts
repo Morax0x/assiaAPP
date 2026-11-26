@@ -46,6 +46,30 @@ export async function createQuote(fd: FormData): Promise<Result<never>> {
   redirect(`/quotes/${r.data}`);
 }
 
+/**
+ * New invoice straight away: the customer can be a registered client or just a name (a client file is created quietly).
+ * Internally: a quote -> a transaction -> an invoice number, then the printable invoice opens.
+ */
+export async function createInvoice(fd: FormData): Promise<Result<never>> {
+  const r = await safe(async () => {
+    const s = await requireAction("txn.write");
+    const { row, items } = parse(fd);
+    const supabase = await createClient();
+    const { data, error } = await supabase.from("quotes").insert({ ...row, valid_until: null, internal_notes: row.internal_notes ?? "فاتورة مباشرة", created_by: s.userId }).select("id").single();
+    if (error) throw error;
+    const { error: ie } = await supabase.rpc("set_quote_items", { p_quote: data.id, p_items: items });
+    if (ie) throw ie;
+    const { data: tid, error: ce } = await supabase.rpc("convert_quote", { p_quote: data.id });
+    if (ce) throw ce;
+    const { error: ve } = await supabase.rpc("issue_invoice", { p_txn: tid });
+    if (ve) throw ve;
+    ["/quotes", "/transactions", "/clients", "/dashboard", "/invoices"].forEach((p) => revalidatePath(p));
+    return tid as string;
+  });
+  if (!r.ok) return r as Result<never>;
+  redirect(`/print/${r.data}`);
+}
+
 export async function updateQuote(id: string, fd: FormData): Promise<Result<never>> {
   const r = await safe(async () => {
     await requireAction("txn.write");
