@@ -17,6 +17,12 @@ function parse(text: string): string {
   if (y < 1900 || y > 2200 || dt.getUTCFullYear() !== y || dt.getUTCMonth() !== mo - 1 || dt.getUTCDate() !== d) return "";
   return `${m[3]}-${m[2]}-${m[1]}`;
 }
+/** While the phone's calendar is open, a dialog around the field must not treat it as a tap outside and close. */
+function markPicking() {
+  const el = document.documentElement;
+  el.dataset.picking = "1";
+  window.setTimeout(() => { delete el.dataset.picking; }, 2500);
+}
 function mask(raw: string) {
   const digits = raw.replace(/[٠-٩]/g, (c) => String(AR.indexOf(c))).replace(/\D/g, "").slice(0, 8);
   if (digits.length <= 2) return digits;
@@ -67,12 +73,12 @@ export function DateField({
       />
       <button
         type="button" tabIndex={-1} aria-label="اختيار من التقويم"
-        onClick={() => { const p = pickRef.current; if (!p) return; try { p.showPicker(); } catch { p.click(); } }}
+        onClick={() => { const p = pickRef.current; if (!p) return; markPicking(); try { p.showPicker(); } catch { p.click(); } }}
         className="absolute start-1.5 top-1/2 flex size-8 -translate-y-1/2 items-center justify-center rounded-md text-ink-3 hover:bg-mute-soft hover:text-navy"
       ><CalendarDays className="size-4" strokeWidth={1.75} /></button>
       <input
         ref={pickRef} type="date" tabIndex={-1} aria-hidden value={iso} min={min} max={max}
-        onChange={(e) => { if (e.target.value) commit(toDisplay(e.target.value)); }}
+        onChange={(e) => { markPicking(); if (e.target.value) commit(toDisplay(e.target.value)); }}
         className="pointer-events-none absolute start-0 top-full h-0 w-0 opacity-0"
       />
     </div>

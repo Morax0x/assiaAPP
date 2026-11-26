@@ -15,6 +15,8 @@ export function DialogContent({
     <D.Portal>
       <D.Overlay className="fixed inset-0 z-50 bg-ink/40" />
       <D.Content
+        onInteractOutside={(e) => { if (document.documentElement.dataset.picking) e.preventDefault(); }}
+        onFocusOutside={(e) => { if (document.documentElement.dataset.picking) e.preventDefault(); }}
         className={cn(
           "fixed z-50 flex max-h-[92dvh] flex-col border border-line bg-surface shadow-lg outline-none",
           "inset-x-0 bottom-0 rounded-t-xl md:inset-auto md:start-1/2 md:top-1/2 md:w-full md:max-w-lg md:-translate-y-1/2 md:ltr:-translate-x-1/2 md:rtl:translate-x-1/2 md:rounded-card",

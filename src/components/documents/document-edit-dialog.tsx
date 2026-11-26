@@ -1,19 +1,20 @@
 "use client";
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { Pencil } from "lucide-react";
+import { Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { DateField } from "@/components/ui/date-field";
 import { Field, Input, Select } from "@/components/ui/form";
 import { CUSTOM_TYPE, DocTypePicker, type TypeOpt } from "@/components/documents/doc-type-picker";
-import { listClientTransactions, updateDocument } from "@/modules/documents/actions";
+import { ConfirmButton } from "@/components/ui/confirm-button";
+import { deleteDocument, listClientTransactions, updateDocument } from "@/modules/documents/actions";
 
 export type EditableDoc = { id: string; title: string; type_id: string; issue_date: string | null; expiry_date: string | null; transaction_id?: string | null };
 
 /** Edit a document's name, type (or write a new type), dates, and linked transaction. */
-export function DocumentEditDialog({ doc, clientId, types, iconOnly, folder: folder0 = "", tag: tag0 = "" }: { doc: EditableDoc; clientId: string; types: TypeOpt[]; iconOnly?: boolean; folder?: string; tag?: string }) {
+export function DocumentEditDialog({ doc, clientId, types, iconOnly, folder: folder0 = "", tag: tag0 = "", canDelete = false }: { doc: EditableDoc; clientId: string; types: TypeOpt[]; iconOnly?: boolean; folder?: string; tag?: string; canDelete?: boolean }) {
   const router = useRouter();
   const [open, setOpen] = React.useState(false);
   const [title, setTitle] = React.useState(doc.title);
@@ -68,7 +69,13 @@ export function DocumentEditDialog({ doc, clientId, types, iconOnly, folder: fol
               </Select>
             </Field>
           </div>
-          <div className="flex justify-end"><Button type="submit" disabled={busy}>{busy ? "جارٍ الحفظ..." : "حفظ التعديل"}</Button></div>
+          <div className="flex items-center justify-between gap-2">
+            {canDelete ? (
+              <ConfirmButton type="button" variant="danger" title="حذف المستند" confirmLabel="احذف" message={`سيُحذف «${doc.title}» وينتقل إلى سلة المحذوفات، ويمكن استرجاعه منها.`}
+                action={async () => { const r = await deleteDocument(doc.id); if (r.ok) setOpen(false); return r; }}><Trash2 /> حذف المستند</ConfirmButton>
+            ) : <span />}
+            <Button type="submit" disabled={busy}>{busy ? "جارٍ الحفظ..." : "حفظ التعديل"}</Button>
+          </div>
         </form>
       </DialogContent>
     </Dialog>

@@ -109,7 +109,7 @@ export function DocumentsPanel({
                         {b && <Badge tone={STATUS_TONE[b.bucket]}>{BUCKET_LABEL[b.bucket]} · {daysLabel(b.days)}</Badge>}
                         <div className="flex flex-wrap items-center">
                           <DocumentPreviewButton id={d.id} />
-                          {canWrite && <DocumentEditDialog doc={d} clientId={clientId} types={types} iconOnly folder={d.folder ?? ""} tag={d.tag ?? ""} />}
+                          {canWrite && <DocumentEditDialog canDelete={canDelete} doc={d} clientId={clientId} types={types} iconOnly folder={d.folder ?? ""} tag={d.tag ?? ""} />}
                           {canMove && <MoveDocumentsDialog ids={[d.id]} currentClientId={clientId} targets={moveTargets!} iconOnly />}
                           {canWrite && d.expiry_date && (
                             <Button variant="ghost" size="sm" onClick={() => setRenew(d)}><RefreshCw /> تجديد</Button>

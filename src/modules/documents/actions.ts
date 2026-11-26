@@ -142,7 +142,7 @@ export async function deleteDocument(documentId: string) {
     const supabase = await createClient();
     const { error } = await supabase.rpc("soft_delete_record", { p_table: "documents", p_id: documentId });
     if (error) throw error;
-    revalidatePath("/alerts");
+    ["/alerts", "/documents", "/dashboard"].forEach((x) => revalidatePath(x));
   });
 }
 

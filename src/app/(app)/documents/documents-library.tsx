@@ -279,7 +279,7 @@ export function DocumentsLibrary({
                 <div className="flex items-center justify-between border-t border-line px-1 py-1">
                   {canOpen && <DocumentPreviewButton id={d.id} />}
                   <div className="flex items-center">
-                    {canWrite && <DocumentEditDialog doc={d} clientId={d.client_id} types={types} iconOnly folder={d.folder ?? ""} tag={d.tag ?? ""} />}
+                    {canWrite && <DocumentEditDialog canDelete={canDelete} doc={d} clientId={d.client_id} types={types} iconOnly folder={d.folder ?? ""} tag={d.tag ?? ""} />}
                     {canWrite && canMove && <MoveDocumentsDialog ids={[d.id]} currentClientId={d.client_id} targets={moveTargets} iconOnly />}
                   </div>
                 </div>
@@ -314,7 +314,7 @@ export function DocumentsLibrary({
                       <td className="px-3 py-2.5 text-ink-2 num">{fmtDate(d.created_at)}</td>
                       <td className="px-2 py-1.5"><div className="flex items-center justify-end">
                         {canOpen && <DocumentPreviewButton id={d.id} />}
-                        {canWrite && <DocumentEditDialog doc={d} clientId={d.client_id} types={types} iconOnly folder={d.folder ?? ""} tag={d.tag ?? ""} />}
+                        {canWrite && <DocumentEditDialog canDelete={canDelete} doc={d} clientId={d.client_id} types={types} iconOnly folder={d.folder ?? ""} tag={d.tag ?? ""} />}
                         {canWrite && canMove && <MoveDocumentsDialog ids={[d.id]} currentClientId={d.client_id} targets={moveTargets} iconOnly />}
                       </div></td>
                     </tr>
@@ -351,7 +351,7 @@ export function DocumentsLibrary({
         {b && <Badge tone={STATUS_TONE[b.key]}>{BUCKET_LABEL[b.key]} · {daysLabel(b.days)}</Badge>}
         <div className="flex items-center">
           {canOpen && <DocumentPreviewButton id={d.id} />}
-          {canWrite && <DocumentEditDialog doc={d} clientId={d.client_id} types={types} iconOnly folder={d.folder ?? ""} tag={d.tag ?? ""} />}
+          {canWrite && <DocumentEditDialog canDelete={canDelete} doc={d} clientId={d.client_id} types={types} iconOnly folder={d.folder ?? ""} tag={d.tag ?? ""} />}
           {canWrite && canMove && <MoveDocumentsDialog ids={[d.id]} currentClientId={d.client_id} targets={moveTargets} iconOnly />}
         </div>
       </li>
