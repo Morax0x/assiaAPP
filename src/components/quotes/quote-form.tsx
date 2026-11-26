@@ -3,6 +3,7 @@ import { DateField } from "@/components/ui/date-field";
 import * as React from "react";
 import { ActionForm } from "@/components/ui/action-form";
 import { Field, Input, Select, Textarea } from "@/components/ui/form";
+import { ClientPicker } from "@/components/ui/client-picker";
 import { ItemsEditor, type ItemInit, type ServiceOpt, type Totals } from "@/components/items/items-editor";
 import { money } from "@/lib/utils";
 import type { Result } from "@/lib/action";
@@ -29,10 +30,7 @@ export function QuoteForm({
         <h3 className="mb-3 text-base font-semibold">{mode === "invoice" ? "لمن هذه الفاتورة؟" : "لمن هذا العرض؟"}</h3>
         <div className="grid gap-3 sm:grid-cols-2">
           <Field label="العميل" className="sm:col-span-2">
-            <Select name="client_id" value={client} onChange={(e) => setClient(e.target.value)}>
-              <option value="">— ليس عميلاً مسجلاً (اكتب اسمه فقط) —</option>
-              {clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </Select>
+            <ClientPicker name="client_id" clients={clients} value={client} onChange={setClient} emptyLabel="— ليس عميلاً مسجلاً (اكتب اسمه فقط) —" />
           </Field>
           {!client && (
             <>

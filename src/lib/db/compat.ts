@@ -209,7 +209,7 @@ async function rpc(engine: Engine, role: Role, userId: string | null, fn: string
     if (!meta) throw new Error(`function ${fn} not found`);
     const keys = Object.keys(args);
     const call = `${q(fn)}(${keys.map((k, i) => `${q(k)} => $${i + 1}`).join(", ")})`;
-    const params = keys.map((k) => prep(args[k]));
+    const params = keys.map((k) => { const v = args[k]; return Array.isArray(v) && (v.some((x) => x && typeof x === "object") || (v.length === 0 && /items|json/i.test(k))) ? JSON.stringify(v) : prep(v); });
     const { proretset, typname } = meta;
     if (proretset || typname === "record") {
       const r = await engine.run(role, userId, `select * from ${call}`, params);

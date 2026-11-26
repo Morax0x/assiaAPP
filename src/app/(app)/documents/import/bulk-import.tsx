@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader } from "@/components/ui/card";
 import { Field, Input, Select } from "@/components/ui/form";
+import { ClientPicker } from "@/components/ui/client-picker";
 import { CUSTOM_TYPE, type TypeOpt } from "@/components/documents/doc-type-picker";
 import { createDocuments, ensureClient } from "@/modules/documents/actions";
 import { uploadPrivate } from "@/lib/upload";
@@ -50,7 +51,8 @@ async function pool<T>(items: T[], size: number, fn: (x: T, i: number) => Promis
 }
 
 export function BulkImport({ clients, types }: { clients: ClientOpt[]; types: TypeOpt[] }) {
-  const [mode, setMode] = React.useState<"kinds" | "one" | "per">("kinds");
+  const [mode, setMode] = React.useState<"kinds" | "one" | "per">("one");
+  const [confirmNew, setConfirmNew] = React.useState(false);
   const [clientId, setClientId] = React.useState("");
   const [newName, setNewName] = React.useState("");
   const [newKind, setNewKind] = React.useState<"individual" | "company" | "sponsor">("company");
@@ -75,7 +77,7 @@ export function BulkImport({ clients, types }: { clients: ClientOpt[]; types: Ty
       const bad = f.size === 0 ? "ملف فارغ (0 بايت)" : f.size > MAX ? "أكبر من 25 ميغابايت" : undefined;
       arr.push({ file: f, rel, status: bad ? "skip" : "wait", note: bad });
     }
-    setItems(arr); setDone(false);
+    setItems(arr); setDone(false); setConfirmNew(false);
     const root = arr[0]?.rel.length > 1 ? arr[0].rel[0] : "";
     if (root && !tag && mode !== "kinds") setTag(root);
   }
@@ -103,11 +105,13 @@ export function BulkImport({ clients, types }: { clients: ClientOpt[]; types: Ty
   const perClients = [...new Set(plan.filter((p) => p.clientName).map((p) => `${p.kind}|${p.clientName}`))];
   const employeeCount = new Set(plan.filter((p) => p.employee).map((p) => `${p.clientName}|${p.employee}`)).size;
   const skippedNoClient = mode !== "one" ? plan.filter((p) => !p.clientName && p.status !== "skip").length : 0;
+  const newClients = perClients.filter((k) => { const n = k.split("|")[1]; return !clients.some((c) => norm(c.name) === norm(n)); });
+  const needConfirm = mode !== "one" && (newClients.length > 0 || employeeCount > 0);
   const totalMB = usable.reduce((a, p) => a + p.file.size, 0) / 1048576;
   const okCount = items.filter((i) => i.status === "ok").length;
   const errCount = items.filter((i) => i.status === "err").length;
 
-  const ready = usable.length > 0 && (mode !== "one" || clientId || newName.trim().length >= 2) && (typeId !== CUSTOM_TYPE || customType.trim().length >= 2);
+  const ready = usable.length > 0 && (!needConfirm || confirmNew) && (mode !== "one" || clientId || newName.trim().length >= 2) && (typeId !== CUSTOM_TYPE || customType.trim().length >= 2);
 
   async function run(onlyFailed = false) {
     stopRef.current = false; setRunning(true); setDone(false);
@@ -219,10 +223,7 @@ export function BulkImport({ clients, types }: { clients: ClientOpt[]; types: Ty
           ) : mode === "one" ? (
             <div className="grid gap-3 sm:grid-cols-2">
               <Field label="العميل / الشركة">
-                <Select value={clientId} onChange={(e) => setClientId(e.target.value)}>
-                  <option value="">＋ إنشاء ملف جديد (اكتب اسمه)</option>
-                  {clients.map((c) => <option key={c.id} value={c.id}>{c.name} ({CLIENT_KIND_LABEL[c.kind] ?? ""})</option>)}
-                </Select>
+                <ClientPicker clients={clients} value={clientId} onChange={setClientId} emptyLabel="＋ إنشاء ملف جديد (اكتب اسمه)" />
               </Field>
               {!clientId && (
                 <>
@@ -276,6 +277,25 @@ export function BulkImport({ clients, types }: { clients: ClientOpt[]; types: Ty
         </div>
       </Card>
 
+      {items.length > 0 && needConfirm && (
+        <Card>
+          <CardHeader title="مراجعة قبل الإنشاء" />
+          <div className="space-y-3 p-4 text-[15px] leading-7">
+            <p>
+              سيُنشأ <b className="num">{newClients.length}</b> ملف عميل جديد{employeeCount > 0 && <> و<b className="num">{employeeCount}</b> موظف داخل الشركات</>}، والباقي ({perClients.length - newClients.length}) موجود وتُضاف إليه الملفات.
+            </p>
+            {newClients.length > 0 && (
+              <ul className="max-h-48 list-disc space-y-0.5 overflow-y-auto rounded-card bg-bg p-3 ps-8 text-sm">
+                {newClients.slice(0, 60).map((k) => <li key={k} dir="auto">{k.split("|")[1]} <span className="text-ink-3">({CLIENT_KIND_LABEL[k.split("|")[0]] ?? ""})</span></li>)}
+                {newClients.length > 60 && <li>… و{newClients.length - 60} آخر</li>}
+              </ul>
+            )}
+            <p className="text-sm text-ink-3">إن كانت بعض هذه الأسماء مجلدات فرعية (طباعة، مرفقات…) وليست عملاء، فاختر الوضع «كل الملفات لعميل واحد» وحدد العميل بالبحث، أو ارفع المجلد الرئيسي (أفراد / شركات / كفلاء) فقط.</p>
+            <label className="flex items-center gap-2"><input type="checkbox" checked={confirmNew} onChange={(e) => setConfirmNew(e.target.checked)} className="size-5 accent-navy" /> نعم، هذه كلها عملاء حقيقيون أنشئها</label>
+          </div>
+        </Card>
+      )}
+
       {items.length > 0 && (
         <Card>
           <CardHeader title="4) الرفع" action={running ? <Button size="sm" variant="danger" onClick={() => { stopRef.current = true; }}><Square /> إيقاف</Button> : undefined} />
@@ -292,7 +312,7 @@ export function BulkImport({ clients, types }: { clients: ClientOpt[]; types: Ty
               {done && errCount === 0 && <Button asChild size="lg"><Link href="/documents">تم. اذهب إلى المستندات</Link></Button>}
               {running && <span className="flex items-center gap-2 text-sm text-ink-3"><Loader2 className="size-4 animate-spin" /> لا تغلق الصفحة حتى ينتهي الرفع</span>}
             </div>
-            {!ready && !running && !done && <p className="text-sm text-warn">أكمل الخطوة 1 (العميل) ليبدأ الرفع.</p>}
+            {!ready && !running && !done && <p className="text-sm text-warn">{needConfirm && !confirmNew ? "أكّد مراجعة العملاء الجدد أعلاه ليبدأ الرفع." : "أكمل الخطوة 1 (العميل) ليبدأ الرفع."}</p>}
             <ul className="max-h-72 divide-y divide-line overflow-y-auto rounded-card border border-line text-sm">
               {plan.slice(0, 300).map((p, i) => (
                 <li key={i} className="flex items-center gap-2 px-3 py-2">

@@ -7,7 +7,8 @@ import imageCompression from "browser-image-compression";
 import { Camera, FileUp, X, FileText, Image as ImageIcon } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Field, Input, Select } from "@/components/ui/form";
+import { Field, Input } from "@/components/ui/form";
+import { ClientPicker } from "@/components/ui/client-picker";
 import { uploadPrivate } from "@/lib/upload";
 import { MAX_FILE_BYTES, readableKey } from "@/lib/keys";
 import { CUSTOM_TYPE, DocTypePicker } from "@/components/documents/doc-type-picker";
@@ -116,10 +117,7 @@ export function DocumentUploader({
     <form onSubmit={submit} className="space-y-4">
       {!clientId && clients && (
         <Field label="العميل">
-          <Select value={client} onChange={(e) => setClient(e.target.value)} required>
-            <option value="">اختر العميل</option>
-            {clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </Select>
+          <ClientPicker clients={clients} value={client} onChange={setClient} />
         </Field>
       )}
 

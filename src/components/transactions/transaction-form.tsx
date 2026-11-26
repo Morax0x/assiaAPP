@@ -1,6 +1,7 @@
 "use client";
 import { DateField } from "@/components/ui/date-field";
 import * as React from "react";
+import { ClientPicker } from "@/components/ui/client-picker";
 import Link from "next/link";
 import { ChevronDown } from "lucide-react";
 import { ActionForm } from "@/components/ui/action-form";
@@ -52,15 +53,13 @@ export function TransactionForm({
     setMethod(accounts?.find((a) => a.id === id)?.kind === "bank" ? "bank_card" : "cash");
   }
 
+  const [clientId, setClientId] = React.useState(initial.client_id ?? "");
   return (
     <ActionForm action={action} submitLabel={submitLabel} resetOnSuccess={mode === "edit"}>
       <Step n={1} title="لمن هذه المعاملة، وما هي؟">
         <div className="grid gap-3 sm:grid-cols-2">
           <Field label="العميل" hint="">
-            <Select name="client_id" defaultValue={initial.client_id ?? ""} required>
-              <option value="">— اختر العميل —</option>
-              {clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </Select>
+            <ClientPicker name="client_id" clients={clients} value={clientId} onChange={setClientId} required />
             <Link href="/clients/new" className="mt-1.5 inline-block text-sm font-medium text-navy hover:underline">العميل غير موجود؟ أضفه أولاً</Link>
           </Field>
           <Field label="عنوان المعاملة (اختياري)" hint="إن تركته فارغاً يُكتب تلقائياً من أول بند" className="sm:col-span-2">
