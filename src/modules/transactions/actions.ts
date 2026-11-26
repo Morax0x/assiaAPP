@@ -3,7 +3,7 @@ import { z } from "zod";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { signedDownload } from "@/lib/storage";
 import { requireAction } from "@/lib/auth";
 import { safe, formObj, emptyToNull, type Result } from "@/lib/action";
 import { itemTotals, parseItems, titleFromItems } from "@/lib/items";
@@ -153,8 +153,6 @@ export async function getPaymentReceiptUrl(entryId: string): Promise<Result<{ ur
     const supabase = await createClient();
     const { data: path, error } = await supabase.rpc("payment_receipt_path", { p_entry: entryId });
     if (error || !path) throw new Error("لا يوجد إيصال مرفق");
-    const { data, error: e2 } = await createAdminClient().storage.from("vault").createSignedUrl(path as string, 120);
-    if (e2 || !data) throw new Error("تعذر فتح الإيصال");
-    return { url: data.signedUrl };
+    return { url: await signedDownload(path as string, { seconds: 120 }) };
   });
 }

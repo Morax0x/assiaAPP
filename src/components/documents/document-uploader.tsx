@@ -7,7 +7,7 @@ import { Camera, FileUp, X, FileText, Image as ImageIcon } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Field, Input, Select } from "@/components/ui/form";
-import { createClient } from "@/lib/supabase/client";
+import { uploadPrivate } from "@/lib/upload";
 import { createDocuments, renewDocument } from "@/modules/documents/actions";
 import { cn } from "@/lib/utils";
 
@@ -67,15 +67,13 @@ export function DocumentUploader({
     if (renewOf && !expiry) return toast.error("أدخل تاريخ الانتهاء الجديد");
     setBusy(true);
     try {
-      const supabase = createClient();
       const rows: Parameters<typeof createDocuments>[0] = [];
       for (const f0 of files) {
         const f = await prepare(f0);
         if (f.size > MAX) throw new Error(`${f0.name}: يتجاوز 15 ميغابايت بعد الضغط`);
         const ext = (f0.name.split(".").pop() || "bin").toLowerCase().replace(/[^a-z0-9]/g, "");
         const path = `clients/${client}/${crypto.randomUUID()}.${ext}`;
-        const { error } = await supabase.storage.from("vault").upload(path, f, { contentType: f.type || undefined, upsert: false });
-        if (error) throw new Error(`فشل رفع ${f0.name}`);
+        try { await uploadPrivate(path, f, f.type || undefined); } catch (e) { throw new Error(`فشل رفع ${f0.name}: ${e instanceof Error ? e.message : ""}`); }
         rows.push({
           client_id: client,
           transaction_id: transactionId ?? null,

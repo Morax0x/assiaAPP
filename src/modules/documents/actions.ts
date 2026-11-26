@@ -2,7 +2,7 @@
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { signedDownload } from "@/lib/storage";
 import { requireAction } from "@/lib/auth";
 import { safe, emptyToNull } from "@/lib/action";
 
@@ -71,13 +71,9 @@ export async function getSignedUrl(documentId: string, download = false) {
     const { data: doc, error } = await supabase
       .from("documents").select("storage_path,title,mime_type").eq("id", documentId).is("deleted_at", null).single();
     if (error || !doc) throw new Error("المستند غير موجود");
-    const admin = createAdminClient();
     const ext = doc.storage_path.split(".").pop() ?? "";
-    const { data, error: e2 } = await admin.storage
-      .from("vault")
-      .createSignedUrl(doc.storage_path, 120, download ? { download: `${doc.title}.${ext}` } : undefined);
-    if (e2 || !data) throw new Error("تعذر إنشاء الرابط");
-    return { url: data.signedUrl, mime: doc.mime_type as string, title: doc.title as string };
+    const url = await signedDownload(doc.storage_path, { seconds: 120, downloadName: download ? `${doc.title}.${ext}` : undefined });
+    return { url, mime: doc.mime_type as string, title: doc.title as string };
   });
 }
 

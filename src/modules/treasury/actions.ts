@@ -113,9 +113,7 @@ export async function getReceiptUrl(entryId: string): Promise<Result<{ url: stri
     const supabase = await createClient();
     const { data, error } = await supabase.from("ledger_entries").select("receipt_path").eq("id", entryId).single();
     if (error || !data?.receipt_path) throw new Error("لا يوجد إيصال مرفق");
-    const { createAdminClient } = await import("@/lib/supabase/admin");
-    const { data: signed, error: e2 } = await createAdminClient().storage.from("vault").createSignedUrl(data.receipt_path, 120);
-    if (e2 || !signed) throw new Error("تعذر إنشاء الرابط");
-    return { url: signed.signedUrl };
+    const { signedDownload } = await import("@/lib/storage");
+    return { url: await signedDownload(data.receipt_path, { seconds: 120 }) };
   });
 }

@@ -3,7 +3,7 @@ import * as React from "react";
 import { Camera, CheckCircle2, Paperclip, X } from "lucide-react";
 import imageCompression from "browser-image-compression";
 import { toast } from "sonner";
-import { createClient } from "@/lib/supabase/client";
+import { uploadPrivate } from "@/lib/upload";
 
 /** Attach a photo/PDF of a receipt. Uploads to the private vault and gives the path through a hidden input. */
 export function ReceiptAttach({ name = "receipt_path", label = "إرفاق صورة الإيصال (اختياري)" }: { name?: string; label?: string }) {
@@ -20,8 +20,7 @@ export function ReceiptAttach({ name = "receipt_path", label = "إرفاق صو�
       if (f.size > 10 * 1024 * 1024) throw new Error("الملف كبير (الحد 10 ميغابايت)");
       const ext = (file.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "");
       const p = `receipts/${crypto.randomUUID()}.${ext}`;
-      const { error } = await createClient().storage.from("vault").upload(p, f, { contentType: f.type || undefined });
-      if (error) throw error;
+      await uploadPrivate(p, f, f.type || undefined);
       setPath(p); setFileName(file.name);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "تعذر رفع الإيصال");

@@ -6,7 +6,7 @@ import imageCompression from "browser-image-compression";
 import { toast } from "sonner";
 import { ActionDialog } from "@/components/ui/action-form";
 import { Field, Input, Select, Textarea } from "@/components/ui/form";
-import { createClient } from "@/lib/supabase/client";
+import { uploadPrivate } from "@/lib/upload";
 import { addExpense, addTransfer, reconcile } from "@/modules/treasury/actions";
 
 type Acc = { id: string; name: string; balance?: number };
@@ -23,8 +23,7 @@ export function ExpenseDialog({ accounts, categories, defaultOpen }: { accounts:
       const f = file.type.startsWith("image/") ? await imageCompression(file, { maxSizeMB: 0.7, maxWidthOrHeight: 1600, useWebWorker: true }) : file;
       const ext = (file.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "");
       const p = `expenses/${crypto.randomUUID()}.${ext}`;
-      const { error } = await createClient().storage.from("vault").upload(p, f, { contentType: f.type || undefined });
-      if (error) throw error;
+      await uploadPrivate(p, f, f.type || undefined);
       setPath(p);
       toast.success("تم إرفاق الصورة");
     } catch { toast.error("تعذر رفع الصورة"); } finally { setUploading(false); }
