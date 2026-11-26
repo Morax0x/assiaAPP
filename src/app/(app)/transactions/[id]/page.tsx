@@ -12,13 +12,13 @@ import { DocumentsPanel, type DocRow } from "@/components/documents/documents-pa
 import { ShareDialog } from "@/components/share/share-dialog";
 import { createClient } from "@/lib/supabase/server";
 import { requirePage } from "@/lib/auth";
-import { deleteTransaction, recordGovtFee, recordPayment } from "@/modules/transactions/actions";
+import { deleteTransaction, recordGovtFee, recordPayment, updatePayment } from "@/modules/transactions/actions";
 import { LEDGER_KIND_LABEL, METHOD_LABEL, PAY_STATUS_LABEL, TXN_STATUS_LABEL } from "@/lib/permissions";
 import { fmtDate, fmtDateTime, money } from "@/lib/utils";
 
 type Pay = {
   id: string; amount: number; method: string; occurred_at: string; description: string | null; voided: boolean;
-  reference_no: string | null; paid_by: string | null; has_receipt: boolean; recorded_by: string | null;
+  reference_no: string | null; paid_by: string | null; has_receipt: boolean; recorded_by: string | null; account_id: string | null;
 };
 type Hist = { id: number; at: string; user_name: string | null; entity: string; action: string; old_data: Record<string, unknown> | null; new_data: Record<string, unknown> | null };
 
@@ -165,6 +165,13 @@ export default async function TransactionPage({ params }: { params: Promise<{ id
                       </div>
                     </div>
                     {p.has_receipt && <ReceiptButton entryId={p.id} />}
+                    {canTxn && !p.voided && !cancelled && (accounts?.length ?? 0) > 0 && (
+                      <PayDialog
+                        title="تعديل الدفعة" hint="غيّر أي معلومة: المبلغ أو طريقة الدفع أو الحساب أو التاريخ أو الرقم. يُحفظ التعديل في سجل النشاط."
+                        trigger="تعديل" action={updatePayment.bind(null, id, p.id)} accounts={accounts ?? []}
+                        initial={{ amount: Number(p.amount), occurred_at: String(p.occurred_at).slice(0, 10), method: p.method, account_id: p.account_id, reference_no: p.reference_no, paid_by: p.paid_by, note: p.description }}
+                      />
+                    )}
                   </li>
                 ))}
               </ul>

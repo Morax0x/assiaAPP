@@ -1,7 +1,7 @@
 "use client";
 import { DateField } from "@/components/ui/date-field";
 import * as React from "react";
-import { Plus } from "lucide-react";
+import { Pencil, Plus } from "lucide-react";
 import { ActionDialog } from "@/components/ui/action-form";
 import { Field, Input, Select } from "@/components/ui/form";
 import { ReceiptAttach } from "@/components/ui/receipt-attach";
@@ -19,30 +19,32 @@ const REF_LABEL: Record<string, string> = {
 
 /** Dialog to record money received from a client, or a government fee paid out. */
 export function PayDialog({
-  title, trigger, action, accounts, defaultAmount, variant = "outline", payer = true, hint,
+  title, trigger, action, accounts, defaultAmount, variant = "outline", payer = true, hint, initial,
 }: {
   title: string; trigger: string; action: (fd: FormData) => Promise<Result<unknown>>;
   accounts: Acc[]; defaultAmount?: number; variant?: "outline" | "primary" | "accent"; payer?: boolean; hint?: string;
+  /** When given, the dialog edits an existing payment */
+  initial?: { amount: number; occurred_at: string; method: string; account_id: string | null; reference_no: string | null; paid_by: string | null; note: string | null };
 }) {
-  const [acc, setAcc] = React.useState(accounts[0]?.id ?? "");
-  const [method, setMethod] = React.useState(accounts[0]?.kind === "bank" ? "bank_card" : "cash");
+  const [acc, setAcc] = React.useState(initial?.account_id ?? accounts[0]?.id ?? "");
+  const [method, setMethod] = React.useState(initial?.method ?? (accounts[0]?.kind === "bank" ? "bank_card" : "cash"));
   const today = new Date().toISOString().slice(0, 10);
   const needsRef = method !== "cash";
 
   return (
     <ActionDialog
       title={title} description={hint} submitLabel="حفظ" action={action}
-      trigger={<><Plus /> {trigger}</>} triggerProps={{ variant }}
+      trigger={<>{initial ? <Pencil /> : <Plus />} {trigger}</>} triggerProps={initial ? { variant: "ghost", size: "sm" } : { variant }}
     >
       <div className="grid gap-3 sm:grid-cols-2">
         <Field label="المبلغ">
-          <Input name="amount" type="number" step="0.01" min="0.01" required defaultValue={defaultAmount && defaultAmount > 0 ? defaultAmount : ""} dir="ltr" className="text-start" inputMode="decimal" />
+          <Input name="amount" type="number" step="0.01" min="0.01" required defaultValue={initial ? initial.amount : defaultAmount && defaultAmount > 0 ? defaultAmount : ""} dir="ltr" className="text-start" inputMode="decimal" />
         </Field>
         <Field label="تاريخ الدفع">
-          <DateField name="occurred_at" required defaultValue={today} max={today} />
+          <DateField name="occurred_at" required defaultValue={initial?.occurred_at ?? today} max={today} />
         </Field>
         <Field label="طريقة الدفع">
-          <Select name="method" value={method} onChange={(e) => setMethod(e.target.value)}>
+          <Select name="method" value={method} onChange={(e) => { const m = e.target.value; setMethod(m); const want = m === "cash" ? "cash" : "bank"; const a = accounts.find((x) => x.kind === want); if (a) setAcc(a.id); }}>
             {Object.entries(METHOD_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
           </Select>
         </Field>
@@ -52,13 +54,13 @@ export function PayDialog({
           </Select>
         </Field>
         <Field label={REF_LABEL[method] ?? "رقم المرجع"} hint={method === "bank_transfer" ? "الرقم الموجود في إشعار الحوالة" : undefined}>
-          <Input name="reference_no" dir="ltr" className="text-start" required={method === "bank_transfer" || method === "cheque"} />
+          <Input name="reference_no" dir="ltr" className="text-start" defaultValue={initial?.reference_no ?? ""} required={method === "bank_transfer" || method === "cheque"} />
         </Field>
         {payer && needsRef && (
-          <Field label="اسم المحوِّل / الدافع (اختياري)"><Input name="paid_by" /></Field>
+          <Field label="اسم المحوِّل / الدافع (اختياري)"><Input name="paid_by" defaultValue={initial?.paid_by ?? ""} /></Field>
         )}
-        <Field label="ملاحظة" className="sm:col-span-2"><Input name="note" /></Field>
-        <div className="sm:col-span-2"><ReceiptAttach label="إرفاق صورة الإيصال أو إشعار الحوالة (اختياري)" /></div>
+        <Field label="ملاحظة" className="sm:col-span-2"><Input name="note" defaultValue={initial?.note ?? ""} /></Field>
+        {!initial && <div className="sm:col-span-2"><ReceiptAttach label="إرفاق صورة الإيصال أو إشعار الحوالة (اختياري)" /></div>}
       </div>
     </ActionDialog>
   );

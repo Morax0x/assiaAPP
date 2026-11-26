@@ -120,6 +120,21 @@ export async function recordPayment(txnId: string, fd: FormData): Promise<Result
   });
 }
 
+export async function updatePayment(txnId: string, entryId: string, fd: FormData): Promise<Result> {
+  return safe(async () => {
+    await requireAction("txn.write");
+    const p = paySchema.parse(formObj(fd));
+    const supabase = await createClient();
+    const { error } = await supabase.rpc("update_client_payment", {
+      p_id: entryId, p_account: p.account_id, p_amount: p.amount, p_method: p.method, p_note: emptyToNull(p.note),
+      p_occurred_at: emptyToNull(p.occurred_at), p_reference: emptyToNull(p.reference_no), p_paid_by: emptyToNull(p.paid_by),
+    });
+    if (error) throw error;
+    ["/transactions", "/receivables", "/treasury", "/dashboard"].forEach((x) => revalidatePath(x));
+    revalidatePath(`/transactions/${txnId}`);
+  });
+}
+
 export async function recordGovtFee(txnId: string, fd: FormData): Promise<Result> {
   return safe(async () => {
     await requireAction("treasury.write");
