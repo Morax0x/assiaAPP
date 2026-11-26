@@ -122,3 +122,12 @@ option { background: var(--color-surface); color: var(--color-ink); }
 .dark-show { display: none; }
 :root[data-theme="dark"] .dark-show { display: block; }
 :root[data-theme="dark"] .dark-hide { display: none; }
+
+/* Invoice / quote fonts. Put the font files in public/fonts (names below); until then the stand-ins are used. */
+@font-face { font-family: "Droid Arabic Kufi"; font-weight: 400; font-display: swap; src: local("Droid Arabic Kufi"), url("/fonts/DroidArabicKufi-Regular.woff2") format("woff2"), url("/fonts/DroidArabicKufi-Regular.ttf") format("truetype"); }
+@font-face { font-family: "Droid Arabic Kufi"; font-weight: 700; font-display: swap; src: local("Droid Arabic Kufi Bold"), url("/fonts/DroidArabicKufi-Bold.woff2") format("woff2"), url("/fonts/DroidArabicKufi-Bold.ttf") format("truetype"); }
+@font-face { font-family: "Garet"; font-weight: 700; font-display: swap; src: local("Garet Bold"), local("Garet-Bold"), url("/fonts/Garet-Bold.woff2") format("woff2"), url("/fonts/Garet-Bold.otf") format("opentype"), url("/fonts/Garet-Bold.ttf") format("truetype"); }
+.sheet { font-family: "Droid Arabic Kufi", var(--font-noto-kufi), sans-serif; font-weight: 400; }
+.sheet .f-kufi-bold { font-family: "Droid Arabic Kufi", var(--font-noto-kufi), sans-serif; font-weight: 700; }
+.sheet .f-garet, .sheet .num { font-family: "Garet", var(--font-montserrat), "Droid Arabic Kufi", var(--font-noto-kufi), sans-serif; font-weight: 700; }
+.sheet b { font-weight: 400; }

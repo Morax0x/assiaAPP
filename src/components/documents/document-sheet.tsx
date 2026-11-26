@@ -44,7 +44,7 @@ export function DocumentSheet({ d }: { d: SheetData }) {
   return (
     <div
       dir={rtl ? "rtl" : "ltr"}
-      className="relative mx-auto flex w-[210mm] min-h-[297mm] flex-col overflow-hidden text-[#111827] print:shadow-none"
+      className="sheet relative mx-auto flex w-[210mm] min-h-[297mm] flex-col overflow-hidden text-[#111827] print:shadow-none"
       style={{ backgroundColor: "#f1f1f1", backgroundImage: "url(/brand/background.jpg)", backgroundSize: "100% 100%", backgroundRepeat: "no-repeat", printColorAdjust: "exact", WebkitPrintColorAdjust: "exact" }}
     >
       {/* the office's own letterhead is the page background (wave on top, contact bar at the bottom); the logo sits under the wave */}
@@ -53,8 +53,8 @@ export function DocumentSheet({ d }: { d: SheetData }) {
 
       <div className="relative flex flex-1 flex-col px-[14mm] pb-[18mm]" style={{ paddingTop: "60mm" }}>
         <div className="text-center">
-          {lang !== "en" && <div className="text-[34px] font-extrabold tracking-wide">{TITLES[d.kind].ar}</div>}
-          {lang !== "ar" && <div className={`font-extrabold tracking-wide ${lang === "en" ? "text-[44px]" : "text-[40px]"}`} dir="ltr">{TITLES[d.kind].en}</div>}
+          {lang !== "en" && <div className="f-kufi-bold text-[34px] tracking-wide">{TITLES[d.kind].ar}</div>}
+          {lang !== "ar" && <div className={`f-garet tracking-wide ${lang === "en" ? "text-[44px]" : "text-[40px]"}`} dir="ltr">{TITLES[d.kind].en}</div>}
           {d.draft && <div className="mt-1 text-sm font-semibold text-[#f15a27]">{lang === "en" ? "DRAFT" : "مسودة"}</div>}
         </div>
 
@@ -145,7 +145,7 @@ export function DocumentSheet({ d }: { d: SheetData }) {
               // eslint-disable-next-line @next/next/no-img-element
               <img src="/brand/bank.png" alt="Bank transfer details" className="mb-3" style={{ width: "78mm", height: "auto", mixBlendMode: "multiply" }} />
             )}
-            <div className="text-[12px] font-extrabold tracking-[0.12em]" dir="ltr">{o.invoice_footer ? o.invoice_footer : "THANK YOU FOR YOUR BUSINESS"}</div>
+            <div className="f-garet text-[12px] tracking-[0.12em]" dir="ltr">{o.invoice_footer ? o.invoice_footer : "THANK YOU FOR YOUR BUSINESS"}</div>
           </div>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/brand/stamp.webp" alt="" style={{ width: "34mm", height: "auto", mixBlendMode: "multiply" }} />
@@ -159,17 +159,17 @@ export function DocumentSheet({ d }: { d: SheetData }) {
 function Meta({ lang, ar, en, v }: { lang: Lang; ar: string; en: string; v: string }) {
   return (
     <div className="flex gap-2">
-      <dt className="font-medium tracking-wide"><T ar={ar} en={en} lang={lang} />:</dt>
-      <dd className="min-w-[24mm] font-semibold num">{v}</dd>
+      <dt className="f-garet tracking-wide"><T ar={ar} en={en} lang={lang} />:</dt>
+      <dd className="f-garet min-w-[24mm]">{v}</dd>
     </div>
   );
 }
 function Th({ lang, ar, en, w, c, end }: { lang: Lang; ar: string; en: string; w?: string; c?: boolean; end?: boolean }) {
-  return <th style={{ width: w }} className={`py-2.5 font-extrabold ${c ? "text-center" : end ? "text-end" : "text-start"}`}><T ar={ar} en={en} lang={lang} /></th>;
+  return <th style={{ width: w }} className={`f-garet py-2.5 ${c ? "text-center" : end ? "text-end" : "text-start"}`}><T ar={ar} en={en} lang={lang} /></th>;
 }
 function Row({ lang, ar, en, v, strong }: { lang: Lang; ar: string; en: string; v: string; strong?: boolean }) {
   return (
-    <div className={`flex items-center justify-between gap-4 py-0.5 ${strong ? "text-[15px] font-extrabold text-[#1d4f91]" : "text-[13px]"}`}>
+    <div className={`f-garet flex items-center justify-between gap-4 py-0.5 ${strong ? "text-[15px] text-[#1d4f91]" : "text-[13px]"}`}>
       <span><T ar={ar} en={en} lang={lang} /></span><span className="num">{v}</span>
     </div>
   );

@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { IBM_Plex_Sans_Arabic } from "next/font/google";
+import { IBM_Plex_Sans_Arabic, Montserrat, Noto_Kufi_Arabic } from "next/font/google";
 import { Toaster } from "sonner";
 import { SwRegister } from "@/components/layout/sw-register";
 import { ErrorReporter } from "@/components/layout/error-reporter";
@@ -11,6 +11,10 @@ const plex = IBM_Plex_Sans_Arabic({
   variable: "--font-plex",
   display: "swap",
 });
+
+// Stand-ins for the invoice fonts until Droid Arabic Kufi / Garet files are placed in public/fonts
+const kufi = Noto_Kufi_Arabic({ subsets: ["arabic"], weight: ["400", "700"], variable: "--font-noto-kufi", display: "swap", preload: false });
+const montserrat = Montserrat({ subsets: ["latin"], weight: ["700"], variable: "--font-montserrat", display: "swap", preload: false });
 
 export const metadata: Metadata = {
   title: { default: "آسيا لخدمات رجال الأعمال", template: "%s | آسيا" },
@@ -29,7 +33,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="ar" dir="rtl" className={plex.variable} suppressHydrationWarning>
+    <html lang="ar" dir="rtl" className={`${plex.variable} ${kufi.variable} ${montserrat.variable}`} suppressHydrationWarning>
       <head>
         <script
           dangerouslySetInnerHTML={{
