@@ -7,6 +7,7 @@ export const metadata = { title: "رفع ملفاتك الحالية" };
 
 export default async function ImportPage() {
   await requirePage("docs.write");
+  await requirePage("docs.import");
   const supabase = await createClient();
   const [{ data: clients }, { data: types }] = await Promise.all([
     supabase.from("clients").select("id,name,kind").is("deleted_at", null).order("name"),

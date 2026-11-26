@@ -11,6 +11,7 @@ const d = (v: string | null) => (v ? v.slice(0, 10) : "");
 export async function GET(req: Request) {
   const s = await getSession();
   if (!s) return new NextResponse("Unauthorized", { status: 401 });
+  if (!s.perms.has("data.export")) return new NextResponse("Forbidden", { status: 403 });
   const type = new URL(req.url).searchParams.get("type") ?? "transactions";
   const supabase = await createClient();
   let rows: Record<string, unknown>[] = [];

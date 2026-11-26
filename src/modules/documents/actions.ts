@@ -104,7 +104,7 @@ export async function renewDocument(input: {
 
 export async function getSignedUrl(documentId: string, download = false) {
   return safe(async () => {
-    await requireAction();
+    await requireAction("docs.open");
     const supabase = await createClient();
     // RLS decides whether this user can see the document row at all
     const { data: doc, error } = await supabase
@@ -211,6 +211,7 @@ export async function updateDocument(id: string, input: z.input<typeof editSchem
 export async function moveDocuments(ids: string[], clientId: string, transactionId: string | null) {
   return safe(async () => {
     await requireAction("docs.write");
+    await requireAction("docs.move");
     if (!ids.length) throw new Error("اختر مستنداً واحداً على الأقل");
     const supabase = await createClient();
     const { data, error } = await supabase.rpc("move_documents", { p_ids: ids, p_client: clientId, p_txn: transactionId });
@@ -279,5 +280,25 @@ export async function wipeAllDocuments(phrase: string) {
     console.log(`[wipe-documents] by ${s.userId}: ${deleted} documents, ${files} files`);
     revalidatePath("/documents"); revalidatePath("/alerts"); revalidatePath("/dashboard");
     return { deleted, files };
+  });
+}
+
+/** The client a document belongs to, for editing their details straight from the document preview. */
+export async function getDocumentClient(documentId: string) {
+  return safe(async () => {
+    const s = await requireAction();
+    const supabase = await createClient();
+    const { data: d } = await supabase.from("documents").select("client_id").eq("id", documentId).single();
+    if (!d) throw new Error("المستند غير موجود");
+    const [{ data: c }, { data: companies }] = await Promise.all([
+      supabase.from("clients").select("id,kind,name,phone,whatsapp,email,notes,parent_id").eq("id", d.client_id).single(),
+      supabase.from("clients").select("id,name").eq("kind", "company").is("deleted_at", null).order("name"),
+    ]);
+    if (!c) throw new Error("العميل غير موجود");
+    return {
+      client: c as { id: string; kind: string; name: string; phone: string | null; whatsapp: string | null; email: string | null; notes: string | null; parent_id: string | null },
+      companies: ((companies ?? []) as { id: string; name: string }[]).filter((x) => x.id !== c.id),
+      canEdit: s.perms.has("clients.write"),
+    };
   });
 }

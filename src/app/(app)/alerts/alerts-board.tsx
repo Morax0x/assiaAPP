@@ -2,7 +2,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { BellOff, CheckCheck, FilePlus2, MessageCircle, RefreshCw, ShieldCheck } from "lucide-react";
+import { BellOff, CheckCheck, FilePlus2, RefreshCw, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { Badge, STATUS_TONE } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -12,7 +12,7 @@ import { DocumentUploader, type DocType } from "@/components/documents/document-
 import { DocumentPreviewButton } from "@/components/documents/document-preview";
 import { createRenewalTransaction, setFollowup } from "@/modules/documents/actions";
 import { BUCKET_LABEL, FOLLOWUP_LABEL } from "@/lib/permissions";
-import { cn, daysLabel, fmtDate, waNumber } from "@/lib/utils";
+import { cn, daysLabel, fmtDate } from "@/lib/utils";
 
 export type AlertRow = {
   id: string; client_id: string; client_name: string; client_phone: string | null; client_whatsapp: string | null;
@@ -28,7 +28,7 @@ const TABS = [
   { key: "valid", label: BUCKET_LABEL.valid },
 ] as const;
 
-export function AlertsBoard({ rows, template, types, canWrite, canTxn }: { rows: AlertRow[]; template: string; types: DocType[]; canWrite: boolean; canTxn: boolean }) {
+export function AlertsBoard({ rows, types, canWrite, canTxn }: { rows: AlertRow[]; types: DocType[]; canWrite: boolean; canTxn: boolean }) {
   const router = useRouter();
   const [tab, setTab] = React.useState<(typeof TABS)[number]["key"]>("all");
   const [renew, setRenew] = React.useState<AlertRow | null>(null);
@@ -38,12 +38,6 @@ export function AlertsBoard({ rows, template, types, canWrite, canTxn }: { rows:
   const isSnoozed = (r: AlertRow) => !!r.snoozed_until && r.snoozed_until > today;
   const counts = (k: string) => (k === "all" ? rows.length : rows.filter((r) => r.bucket === k).length);
   const list = rows.filter((r) => tab === "all" || r.bucket === tab);
-
-  function waLink(r: AlertRow) {
-    const msg = (template || "السلام عليكم {client}، {document} ينتهي بتاريخ {date}.")
-      .replaceAll("{client}", r.client_name).replaceAll("{document}", `${r.type_name} (${r.title})`).replaceAll("{date}", fmtDate(r.expiry_date));
-    return `https://wa.me/${waNumber(r.client_whatsapp || r.client_phone)}?text=${encodeURIComponent(msg)}`;
-  }
 
   async function run(id: string, fn: () => Promise<{ ok: boolean; error?: string } | { ok: true; data?: unknown } | { ok: false; error: string }>, ok = "تم") {
     setBusy(id);
@@ -106,7 +100,6 @@ export function AlertsBoard({ rows, template, types, canWrite, canTxn }: { rows:
                   <DocumentPreviewButton id={r.id} />
                   {canWrite && <Button size="sm" variant="outline" onClick={() => setRenew(r)}><RefreshCw /> رفع النسخة المجددة</Button>}
                   {canTxn && <Button size="sm" variant="outline" disabled={busy === r.id} onClick={() => toRenewal(r)}><FilePlus2 /> فتح معاملة تجديد</Button>}
-                  <Button asChild size="sm" variant="outline"><a href={waLink(r)} target="_blank" rel="noreferrer"><MessageCircle /> واتساب</a></Button>
                   {canWrite && (
                     <>
                       <Button size="sm" variant="ghost" disabled={busy === r.id} onClick={() => run(r.id, () => setFollowup(r.id, "client_notified"), "سُجّل إبلاغ العميل")}><CheckCheck /> أبلغتُ العميل</Button>

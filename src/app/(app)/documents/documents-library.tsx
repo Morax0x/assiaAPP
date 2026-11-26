@@ -1,7 +1,7 @@
 "use client";
 import * as React from "react";
 import Link from "next/link";
-import { Building2, ChevronLeft, ChevronRight, FileText, Folder, FolderOpen, Image as ImageIcon, Search, ShieldCheck, SlidersHorizontal, User, Users, X } from "lucide-react";
+import { Building2, ChevronLeft, ChevronRight, FileText, Folder, FolderOpen, Image as ImageIcon, Search, Handshake, LayoutGrid, List as ListIcon, SlidersHorizontal, Table2, User, Users, X } from "lucide-react";
 import { Badge, STATUS_TONE } from "@/components/ui/badge";
 import { Card, Empty } from "@/components/ui/card";
 import { Input, Select } from "@/components/ui/form";
@@ -28,7 +28,7 @@ const size = (b: number) => (b > 1048576 ? `${(b / 1048576).toFixed(1)} MB` : `$
 const KINDS = [
   { key: "individual", label: "أفراد", icon: User },
   { key: "company", label: "شركات", icon: Building2 },
-  { key: "sponsor", label: "كفلاء", icon: ShieldCheck },
+  { key: "sponsor", label: "كفلاء", icon: Handshake },
 ] as const;
 const AR_DIGITS = "٠١٢٣٤٥٦٧٨٩";
 const norm = (s: string) => s.replace(/[ً-ٰٟـ]/g, "").replace(/[أإآ]/g, "ا").replace(/ة/g, "ه").replace(/ى/g, "ي").replace(/[٠-٩]/g, (d) => String(AR_DIGITS.indexOf(d))).toLowerCase();
@@ -59,14 +59,17 @@ function FolderTile({ icon: Icon, name, count, alert, dim, hint, onClick }: { ic
 }
 
 export function DocumentsLibrary({
-  docs, types, critical, canWrite, moveTargets,
-}: { docs: LibDoc[]; types: { id: string; name: string }[]; critical: number; canWrite: boolean; moveTargets: MoveTarget[] }) {
+  docs, types, critical, canWrite, canMove, canOpen, moveTargets,
+}: { docs: LibDoc[]; types: { id: string; name: string }[]; critical: number; canWrite: boolean; canMove: boolean; canOpen: boolean; moveTargets: MoveTarget[] }) {
   const [q, setQ] = React.useState("");
   const [type, setType] = React.useState("");
   const [status, setStatus] = React.useState("");
   const [tag, setTag] = React.useState("");
   const [panel, setPanel] = React.useState(false);
   const [wide, setWide] = React.useState(false);
+  const [view, setView] = React.useState<"cards" | "list" | "table">("cards");
+  React.useEffect(() => { try { const v = localStorage.getItem("docview"); if (v === "cards" || v === "list" || v === "table") setView(v); } catch { /* ignore */ } }, []);
+  const chooseView = (v: "cards" | "list" | "table") => { setView(v); try { localStorage.setItem("docview", v); } catch { /* ignore */ } };
   const [loc, setLoc] = React.useState<Loc>([]);
 
   const tags = React.useMemo(() => [...new Set(docs.map((d) => d.tag).filter(Boolean) as string[])].sort((a, b) => a.localeCompare(b, "ar")), [docs]);
@@ -165,16 +168,17 @@ export function DocumentsLibrary({
             const total = members.reduce((n, t) => n + allOf(t.id).length, 0);
             const alert = health(members.flatMap((t) => allOf(t.id)));
             return (
-              <button key={k.key} type="button" onClick={() => go(`k:${k.key}`)} className="group rounded-card border border-line bg-surface p-5 text-start shadow-sm transition hover:border-navy/40 hover:shadow-md">
-                <span className="flex size-14 items-center justify-center rounded-2xl bg-navy text-white"><k.icon className="size-7" strokeWidth={1.5} /></span>
-                <span className="mt-3 block text-lg font-bold">{k.label}</span>
+              <button key={k.key} type="button" onClick={() => go(`k:${k.key}`)} className="group flex items-center gap-4 rounded-card border border-line bg-surface p-4 text-start shadow-sm transition hover:border-navy/40 hover:shadow-md sm:block sm:p-5">
+                <span className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-navy text-white"><k.icon className="size-7" strokeWidth={1.5} /></span>
+                <span className="min-w-0 sm:block"><span className="block text-lg font-bold sm:mt-3">{k.label}</span>
                 <span className="mt-0.5 block text-sm text-ink-3"><b className="num">{members.length}</b> ملف · <b className="num">{total}</b> مستند</span>
                 {(alert.expired > 0 || alert.critical > 0) && (
-                  <span className="mt-2 flex gap-2 text-xs font-medium">
+                  <span className="mt-1 flex gap-2 text-xs font-medium sm:mt-2">
                     {alert.expired > 0 && <span className="text-bad"><span className="num">{alert.expired}</span> منتهي</span>}
                     {alert.critical > 0 && <span className="text-warn"><span className="num">{alert.critical}</span> قارب الانتهاء</span>}
                   </span>
                 )}
+                </span>
               </button>
             );
           })}
@@ -226,7 +230,7 @@ export function DocumentsLibrary({
             </div>
           )}
           {files.length > 0 ? (
-            <Card><ul className="divide-y divide-line">{files.map((d) => renderRow(d))}</ul></Card>
+            renderFiles(files)
           ) : emps.length === 0 && sub.size === 0 ? (
             <Card><Empty icon={<FolderOpen />} title="هذا المجلد فارغ" /></Card>
           ) : null}
@@ -235,6 +239,80 @@ export function DocumentsLibrary({
       );
     }
     return null;
+  }
+
+  function renderFiles(list: LibDoc[], path?: boolean) {
+    if (view === "cards") {
+      return (
+        <div className="grid grid-cols-1 gap-3 min-[420px]:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {list.map((d) => {
+            const b = bucket(d.expiry_date, critical);
+            const isImg = d.mime_type.startsWith("image/"), isPdf = d.mime_type === "application/pdf";
+            const Icon = isImg ? ImageIcon : FileText;
+            const parent = d.client_parent_id ? clientById.get(d.client_parent_id)?.name : null;
+            return (
+              <div key={d.id} className="flex flex-col overflow-hidden rounded-card border border-line bg-surface shadow-sm">
+                <div className={`flex h-20 items-center justify-center ${isPdf ? "bg-bad-soft text-bad" : isImg ? "bg-navy-soft text-navy" : "bg-mute-soft text-ink-2"}`}>
+                  <Icon className="size-9" strokeWidth={1.4} />
+                  <span className="ms-2 text-xs font-bold uppercase">{isPdf ? "PDF" : isImg ? "صورة" : "ملف"}</span>
+                </div>
+                <div className="flex flex-1 flex-col gap-1 p-3">
+                  <div className="line-clamp-2 text-sm font-semibold leading-5" dir="auto">{d.title}</div>
+                  <div className="text-xs text-ink-3">{d.type_name} · <span className="num">{size(d.size_bytes)}</span></div>
+                  {path && <div className="truncate text-xs text-ink-3" dir="auto">{[KIND_LABEL[d.client_kind], parent, d.client_name, d.folder].filter(Boolean).join(" › ")}</div>}
+                  {b ? <div className="mt-1"><Badge tone={STATUS_TONE[b.key]}>{BUCKET_LABEL[b.key]} · {daysLabel(b.days)}</Badge></div> : <div className="mt-1 text-xs text-ink-3">بدون تاريخ انتهاء</div>}
+                </div>
+                <div className="flex items-center justify-between border-t border-line px-1 py-1">
+                  {canOpen && <DocumentPreviewButton id={d.id} />}
+                  <div className="flex items-center">
+                    {canWrite && <DocumentEditDialog doc={d} clientId={d.client_id} types={types} iconOnly folder={d.folder ?? ""} tag={d.tag ?? ""} />}
+                    {canWrite && canMove && <MoveDocumentsDialog ids={[d.id]} currentClientId={d.client_id} targets={moveTargets} iconOnly />}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      );
+    }
+    if (view === "table") {
+      return (
+        <>
+          <Card className="hidden md:block">
+            <table className="w-full text-sm">
+              <thead className="border-b border-line bg-bg text-xs text-ink-3"><tr>
+                <th className="px-4 py-2.5 text-start font-medium">المستند</th><th className="px-3 py-2.5 text-start font-medium">النوع</th>
+                {path && <th className="px-3 py-2.5 text-start font-medium">المكان</th>}
+                <th className="px-3 py-2.5 text-start font-medium">الانتهاء</th><th className="px-3 py-2.5 text-start font-medium">الحجم</th><th className="px-3 py-2.5 text-start font-medium">أضيف</th><th />
+              </tr></thead>
+              <tbody className="divide-y divide-line">
+                {list.map((d) => {
+                  const b = bucket(d.expiry_date, critical);
+                  const parent = d.client_parent_id ? clientById.get(d.client_parent_id)?.name : null;
+                  return (
+                    <tr key={d.id} className="hover:bg-bg">
+                      <td className="max-w-72 truncate px-4 py-2.5 font-medium" dir="auto">{d.title}</td>
+                      <td className="px-3 py-2.5 text-ink-2">{d.type_name}</td>
+                      {path && <td className="max-w-56 truncate px-3 py-2.5 text-xs text-ink-3" dir="auto">{[KIND_LABEL[d.client_kind], parent, d.client_name, d.folder].filter(Boolean).join(" › ")}</td>}
+                      <td className="px-3 py-2.5">{b ? <Badge tone={STATUS_TONE[b.key]}>{BUCKET_LABEL[b.key]} · {daysLabel(b.days)}</Badge> : <span className="text-ink-3">—</span>}</td>
+                      <td className="px-3 py-2.5 text-ink-2 num">{size(d.size_bytes)}</td>
+                      <td className="px-3 py-2.5 text-ink-2 num">{fmtDate(d.created_at)}</td>
+                      <td className="px-2 py-1.5"><div className="flex items-center justify-end">
+                        {canOpen && <DocumentPreviewButton id={d.id} />}
+                        {canWrite && <DocumentEditDialog doc={d} clientId={d.client_id} types={types} iconOnly folder={d.folder ?? ""} tag={d.tag ?? ""} />}
+                        {canWrite && canMove && <MoveDocumentsDialog ids={[d.id]} currentClientId={d.client_id} targets={moveTargets} iconOnly />}
+                      </div></td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </Card>
+          <Card className="md:hidden"><ul className="divide-y divide-line">{list.map((d) => renderRow(d, path))}</ul></Card>
+        </>
+      );
+    }
+    return <Card><ul className="divide-y divide-line">{list.map((d) => renderRow(d, path))}</ul></Card>;
   }
 
   function renderRow(d: LibDoc, path?: boolean) {
@@ -256,9 +334,9 @@ export function DocumentsLibrary({
         </div>
         {b && <Badge tone={STATUS_TONE[b.key]}>{BUCKET_LABEL[b.key]} · {daysLabel(b.days)}</Badge>}
         <div className="flex items-center">
-          <DocumentPreviewButton id={d.id} />
+          {canOpen && <DocumentPreviewButton id={d.id} />}
           {canWrite && <DocumentEditDialog doc={d} clientId={d.client_id} types={types} iconOnly folder={d.folder ?? ""} tag={d.tag ?? ""} />}
-          {canWrite && <MoveDocumentsDialog ids={[d.id]} currentClientId={d.client_id} targets={moveTargets} iconOnly />}
+          {canWrite && canMove && <MoveDocumentsDialog ids={[d.id]} currentClientId={d.client_id} targets={moveTargets} iconOnly />}
         </div>
       </li>
     );
@@ -269,16 +347,25 @@ export function DocumentsLibrary({
       {/* search + filters: always visible on desktop; behind a button on phones */}
       <div className="space-y-2">
         <div className="flex gap-2">
-          <div className={`relative min-w-0 flex-1 ${panel ? "block" : "hidden md:block"}`}>
+          <div className="relative min-w-0 flex-1">
             <Search className="pointer-events-none absolute start-3 top-1/2 size-4 -translate-y-1/2 text-ink-3" strokeWidth={1.75} />
-            <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder={wide ? "بحث موسع: المجلدات وأسماء المستندات" : "ابحث باسم مجلد أو عميل"} className="ps-9" />
+            <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder={wide ? "بحث موسع: المجلدات والمستندات" : "ابحث باسم مجلد أو عميل"} className={q || searching ? "px-9" : "ps-9"} />
+            {(searching || nameSearch) && (
+              <button type="button" onClick={() => { setQ(""); setType(""); setStatus(""); setTag(""); setWide(false); }} aria-label="مسح البحث" className="absolute end-2 top-1/2 flex size-8 -translate-y-1/2 items-center justify-center rounded-full text-ink-3 hover:bg-mute-soft"><X className="size-4" /></button>
+            )}
           </div>
-          <Button type="button" variant={panel || searching || nameSearch ? "primary" : "outline"} onClick={() => setPanel((v) => !v)} className={panel ? "" : "w-full md:w-auto"} aria-expanded={panel}>
-            <SlidersHorizontal /> {panel ? "إخفاء" : "بحث وتصفية"}{searching && !panel ? " •" : ""}
-          </Button>
-          {(searching || nameSearch) && (
-            <Button type="button" variant="outline" onClick={() => { setQ(""); setType(""); setStatus(""); setTag(""); setWide(false); }} aria-label="مسح البحث"><X /></Button>
-          )}
+          <button
+            type="button" onClick={() => setPanel((v) => !v)} aria-expanded={panel} aria-label="تصفية"
+            className={`relative flex size-11 shrink-0 items-center justify-center rounded-ctl border ${panel || filtersOn || wide ? "border-navy bg-navy text-white" : "border-line-strong bg-surface text-ink-2"}`}
+          >
+            <SlidersHorizontal className="size-5" strokeWidth={1.8} />
+            {(filtersOn || wide) && !panel && <span className="absolute -end-1 -top-1 size-3 rounded-full bg-orange" />}
+          </button>
+          <div className="hidden items-center gap-0.5 rounded-ctl border border-line-strong bg-surface p-1 sm:flex" role="group" aria-label="طريقة العرض">
+            {([["cards", LayoutGrid, "بطاقات"], ["list", ListIcon, "قائمة"], ["table", Table2, "جدول"]] as const).map(([k, Ic, t]) => (
+              <button key={k} type="button" onClick={() => chooseView(k)} aria-pressed={view === k} title={t} aria-label={t} className={`flex size-9 items-center justify-center rounded-md ${view === k ? "bg-navy-soft text-navy" : "text-ink-3 hover:bg-mute-soft"}`}><Ic className="size-[18px]" strokeWidth={1.8} /></button>
+            ))}
+          </div>
         </div>
         {panel && (
           <div className="grid gap-2 rounded-card border border-line bg-surface p-3 sm:grid-cols-3">
@@ -321,11 +408,10 @@ export function DocumentsLibrary({
         results.length === 0 ? (
           <Card><Empty icon={<FileText />} title="لا توجد مستندات مطابقة" /></Card>
         ) : (
-          <Card>
-            <div className="border-b border-line px-4 py-2 text-xs text-ink-3"><b className="num">{results.length}</b> نتيجة</div>
-            <ul className="divide-y divide-line">{results.slice(0, 200).map((d) => renderRow(d, true))}</ul>
-            {results.length > 200 && <div className="border-t border-line px-4 py-2 text-center text-xs text-ink-3">يظهر أول 200 مستند، حدّد البحث أكثر.</div>}
-          </Card>
+          <div className="space-y-2">
+            <div className="text-xs text-ink-3"><b className="num">{results.length}</b> نتيجة{results.length > 200 && " — يظهر أول 200، حدّد البحث أكثر"}</div>
+            {renderFiles(results.slice(0, 200), true)}
+          </div>
         )
       ) : (
         <>

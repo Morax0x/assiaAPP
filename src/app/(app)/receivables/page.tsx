@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { MessageCircle } from "lucide-react";
 import { Card, Empty, PageHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge, STATUS_TONE } from "@/components/ui/badge";
@@ -7,18 +6,16 @@ import { ExportButton } from "@/components/import-export/export-button";
 import { createClient } from "@/lib/supabase/server";
 import { requirePage } from "@/lib/auth";
 import { PAY_STATUS_LABEL } from "@/lib/permissions";
-import { fmtDate, money, waNumber } from "@/lib/utils";
+import { fmtDate, money } from "@/lib/utils";
 
 export const metadata = { title: "المستحقات" };
 
 export default async function ReceivablesPage() {
-  await requirePage();
+  await requirePage("receivables.view");
   const supabase = await createClient();
-  const [{ data: rows }, { data: clients }] = await Promise.all([
-    supabase.from("transactions_list").select("*").neq("status", "cancelled").gt("remaining", 0).order("created_at"),
-    supabase.from("clients").select("id,phone,whatsapp"),
+  const [{ data: rows }] = await Promise.all([
+    supabase.from("transactions_list").select("*").neq("status", "cancelled").gt("remaining", 0).order("created_at")
   ]);
-  const phone = new Map<string, string | null>((clients ?? []).map((c) => [c.id as string, (c.whatsapp || c.phone) as string | null]));
   type TL = { id: string; ref_no: string; title: string; created_at: string; payment_status: string; remaining: number; client_id: string; client_name: string };
   const groups = new Map<string, { name: string; id: string; total: number; items: TL[] }>();
   ((rows ?? []) as TL[]).forEach((r) => {
@@ -43,17 +40,12 @@ export default async function ReceivablesPage() {
       ) : (
         <div className="space-y-3">
           {list.map((g) => {
-            const wa = waNumber(phone.get(g.id));
-            const msg = `السلام عليكم ${g.name}، نود تذكيركم بوجود مبلغ مستحق قدره ${money(g.total)}. نشكر لكم تعاملكم.`;
             return (
               <Card key={g.id}>
                 <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line px-4 py-3">
                   <Link href={`/clients/${g.id}`} className="text-sm font-semibold hover:text-navy">{g.name}</Link>
                   <div className="flex items-center gap-2">
                     <span className="font-semibold text-bad num">{money(g.total)}</span>
-                    {wa && (
-                      <Button asChild size="sm" variant="outline"><a href={`https://wa.me/${wa}?text=${encodeURIComponent(msg)}`} target="_blank" rel="noreferrer"><MessageCircle /> تذكير</a></Button>
-                    )}
                   </div>
                 </div>
                 <ul className="divide-y divide-line">

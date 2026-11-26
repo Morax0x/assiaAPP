@@ -11,6 +11,7 @@ export const metadata = { title: "تعديل عرض سعر" };
 export default async function EditQuotePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   await requirePage("txn.write");
+  await requirePage("invoices.write");
   const supabase = await createClient();
   const { data: q } = await supabase.from("quotes").select("*").eq("id", id).is("deleted_at", null).maybeSingle();
   if (!q) notFound();

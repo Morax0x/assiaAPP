@@ -7,8 +7,10 @@ import { PERMISSIONS, PERMISSION_PRESETS } from "@/lib/permissions";
 import { saveUserPermissions } from "@/modules/users/actions";
 
 const GROUPS: { title: string; keys: string[] }[] = [
-  { title: "العمل اليومي", keys: ["clients.write", "clients.delete", "txn.write", "txn.delete", "docs.write", "docs.delete", "share.create"] },
-  { title: "المال", keys: ["treasury.view", "treasury.write", "reports.view"] },
+  { title: "العمل اليومي", keys: ["clients.write", "clients.delete", "txn.write", "txn.delete", "invoices.write", "txn.fees", "share.create"] },
+  { title: "المستندات", keys: ["docs.write", "docs.open", "docs.move", "docs.import", "docs.delete"] },
+  { title: "المال", keys: ["treasury.view", "treasury.write", "reports.view", "receivables.view"] },
+  { title: "البيانات", keys: ["data.export", "data.import", "services.manage"] },
   { title: "الإدارة", keys: ["settings.manage", "users.manage", "audit.view"] },
 ];
 const LABEL = Object.fromEntries(PERMISSIONS.map((p) => [p.key, p.label]));

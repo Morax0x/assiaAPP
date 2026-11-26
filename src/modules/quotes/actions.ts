@@ -32,6 +32,7 @@ function parse(fd: FormData) {
 
 export async function createQuote(fd: FormData): Promise<Result<never>> {
   const r = await safe(async () => {
+    await requireAction("invoices.write");
     const s = await requireAction("txn.write");
     const { row, items } = parse(fd);
     const supabase = await createClient();
@@ -52,6 +53,7 @@ export async function createQuote(fd: FormData): Promise<Result<never>> {
  */
 export async function createInvoice(fd: FormData): Promise<Result<never>> {
   const r = await safe(async () => {
+    await requireAction("invoices.write");
     const s = await requireAction("txn.write");
     const { row, items } = parse(fd);
     const supabase = await createClient();
@@ -72,6 +74,7 @@ export async function createInvoice(fd: FormData): Promise<Result<never>> {
 
 export async function updateQuote(id: string, fd: FormData): Promise<Result<never>> {
   const r = await safe(async () => {
+    await requireAction("invoices.write");
     await requireAction("txn.write");
     const { row, items } = parse(fd);
     const supabase = await createClient();
@@ -88,6 +91,7 @@ export async function updateQuote(id: string, fd: FormData): Promise<Result<neve
 
 export async function setQuoteStatus(id: string, status: string): Promise<Result> {
   return safe(async () => {
+    await requireAction("invoices.write");
     await requireAction("txn.write");
     if (!["draft", "sent", "accepted", "rejected"].includes(status)) throw new Error("حالة غير صالحة");
     const supabase = await createClient();
@@ -100,6 +104,7 @@ export async function setQuoteStatus(id: string, status: string): Promise<Result
 
 export async function convertQuoteAction(id: string): Promise<Result<never>> {
   const r = await safe(async () => {
+    await requireAction("invoices.write");
     await requireAction("txn.write");
     const supabase = await createClient();
     const { data, error } = await supabase.rpc("convert_quote", { p_quote: id });
@@ -113,6 +118,7 @@ export async function convertQuoteAction(id: string): Promise<Result<never>> {
 
 export async function deleteQuote(id: string): Promise<Result<never>> {
   const r = await safe(async () => {
+    await requireAction("invoices.write");
     await requireAction("txn.write");
     const supabase = await createClient();
     const { error } = await supabase.from("quotes").update({ deleted_at: new Date().toISOString() }).eq("id", id);

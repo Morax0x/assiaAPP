@@ -8,6 +8,7 @@ export const metadata = { title: "عرض سعر جديد" };
 
 export default async function NewQuotePage({ searchParams }: { searchParams: Promise<{ client?: string }> }) {
   await requirePage("txn.write");
+  await requirePage("invoices.write");
   const { client } = await searchParams;
   const { clients, templates } = await loadTxnLookups();
   return (

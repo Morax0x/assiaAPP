@@ -18,6 +18,7 @@ export type ImportRow = z.input<typeof rowSchema>;
 
 export async function importTransactions(rows: ImportRow[]): Promise<Result<{ created: number; clients: number }>> {
   return safe(async () => {
+    await requireAction("data.import");
     const s = await requireAction("txn.write");
     if (rows.length > 500) throw new Error("الحد الأقصى 500 صف في كل استيراد");
     const supabase = await createClient();

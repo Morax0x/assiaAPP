@@ -19,7 +19,7 @@ export default async function ServicesPage() {
         title="الخدمات والأسعار"
         description="قائمة الخدمات التي يقدمها المكتب مع أسعارها. تظهر هنا عند إنشاء فاتورة أو عرض سعر فتمتلئ الأسعار تلقائياً، ويمكنك دائماً كتابة بند يدوي مختلف."
       />
-      <ServicesBoard rows={rows} canEdit={s.perms.has("settings.manage")} />
+      <ServicesBoard rows={rows} canEdit={s.perms.has("services.manage")} />
     </>
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 import * as React from "react";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Building2, Search, ShieldCheck, User } from "lucide-react";
+import { Building2, Search, Handshake, User } from "lucide-react";
 import { DataTable } from "@/components/data-table/data-table";
 import { Input } from "@/components/ui/form";
 import { FilterPanel } from "@/components/ui/filter-panel";
@@ -10,7 +10,7 @@ import { money, cn } from "@/lib/utils";
 import { CLIENT_KIND_PLURAL } from "@/lib/permissions";
 
 const KindIcon = ({ kind, className }: { kind: string; className?: string }) =>
-  kind === "company" ? <Building2 className={className} strokeWidth={1.75} /> : kind === "sponsor" ? <ShieldCheck className={className} strokeWidth={1.75} /> : <User className={className} strokeWidth={1.75} />;
+  kind === "company" ? <Building2 className={className} strokeWidth={1.75} /> : kind === "sponsor" ? <Handshake className={className} strokeWidth={1.75} /> : <User className={className} strokeWidth={1.75} />;
 
 type Row = { id: string; kind: string; name: string; phone: string | null; email: string | null; due: number; parent_id?: string | null; parent_name?: string | null };
 

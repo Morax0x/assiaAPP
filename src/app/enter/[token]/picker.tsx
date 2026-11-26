@@ -24,7 +24,7 @@ export function Picker({ token, people }: { token: string; people: Person[] }) {
   if (!who) {
     return (
       <div className="rounded-card border border-line bg-surface p-4">
-        <p className="mb-3 text-center text-[15px] font-semibold">من أنت؟ اضغط على اسمك</p>
+        <p className="mb-3 text-center text-[15px] font-semibold">اضغط على اسمك فقط</p>
         <ul className="space-y-2">
           {people.map((p) => (
             <li key={p.id}>
@@ -34,7 +34,6 @@ export function Picker({ token, people }: { token: string; people: Person[] }) {
             </li>
           ))}
         </ul>
-        <p className="mt-4 text-center text-xs leading-6 text-ink-3">المالك والمدير يدخلان من صفحة تسجيل الدخول العادية.</p>
       </div>
     );
   }

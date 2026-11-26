@@ -37,6 +37,8 @@ export default async function DashboardPage() {
     supabase.from("transactions").select("id", { count: "exact", head: true }).is("deleted_at", null),
     supabase.from("transactions_list").select("remaining").neq("status", "cancelled").gt("remaining", 0),
   ]);
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const { count: todayCount } = await supabase.from("transactions").select("id", { count: "exact", head: true }).is("deleted_at", null).gte("created_at", todayIso);
   const owedTotal = (owing ?? []).reduce((a, r) => a + Number(r.remaining), 0);
   const todo: { text: string; href: string; tone: "bad" | "warn" | "navy" }[] = [];
   if (Number(st.urgent_docs) > 0) todo.push({ text: `${st.urgent_docs} مستند منتهٍ أو على وشك الانتهاء ويحتاج تجديداً`, href: "/alerts", tone: "bad" });
@@ -57,15 +59,31 @@ export default async function DashboardPage() {
 
   return (
     <>
-      <PageHeader title={`مرحباً ${s.profile.full_name.split(" ")[0]}`} description={new Intl.DateTimeFormat("ar-AE", { dateStyle: "full" }).format(new Date())} />
+      <section className="mb-5 overflow-hidden rounded-card bg-gradient-to-l from-[#1b4678] to-[#204f89] p-5 text-white shadow-sm md:p-6">
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div className="min-w-0">
+            <div className="text-sm text-white/75">{new Intl.DateTimeFormat("ar-AE", { dateStyle: "full" }).format(new Date())}</div>
+            <h1 className="mt-1 text-2xl font-bold tracking-tight md:text-3xl">مرحباً {s.profile.full_name.split(" ")[0]}</h1>
+          </div>
+          <dl className="grid w-full grid-cols-3 gap-2 text-center sm:w-auto sm:gap-3">
+            {([["معاملات اليوم", String(todayCount ?? 0)], ["قيد الإجراء", String(st.in_progress ?? 0)], ["تنبيهات عاجلة", String(st.urgent_docs ?? 0)]] as const).map(([l, v]) => (
+              <div key={l} className="min-w-0 rounded-xl bg-white/15 px-2 py-2 sm:min-w-[5.5rem] sm:px-3">
+                <dd className="text-2xl font-bold num">{v}</dd>
+                <dt className="text-[11px] text-white/80">{l}</dt>
+              </div>
+            ))}
+          </dl>
+        </div>
+      </section>
 
-      <nav aria-label="إجراءات سريعة" className="mb-5 grid grid-cols-3 gap-2.5 sm:grid-cols-6">
+      <nav aria-label="إجراءات سريعة" className="mb-5 grid grid-cols-3 gap-2.5 sm:grid-cols-4 lg:grid-cols-7">
         {([
           s.perms.has("txn.write") && { href: "/transactions/new", label: "معاملة جديدة", icon: FilePlus2, main: true },
           s.perms.has("clients.write") && { href: "/clients/new", label: "عميل جديد", icon: UserPlus },
           s.perms.has("docs.write") && { href: "/documents/new", label: "رفع مستند", icon: Upload },
-          s.perms.has("treasury.write") && { href: "/treasury?new=expense", label: "تسجيل مصروف", icon: Receipt },
-          { href: "/receivables", label: "المبالغ المتبقية", icon: WalletCards },
+          s.perms.has("treasury.write") && { href: "/treasury?new=expense", label: "تسجيل مصروف", icon: Banknote },
+          s.perms.has("invoices.write") && { href: "/invoices/new", label: "فاتورة جديدة", icon: Receipt },
+          s.perms.has("receivables.view") && { href: "/receivables", label: "المبالغ المتبقية", icon: WalletCards },
           { href: "/search", label: "بحث بالصوت", icon: ScanSearch },
         ].filter(Boolean) as { href: string; label: string; icon: typeof Upload; main?: boolean }[]).map((a) => (
           <Link
@@ -119,11 +137,12 @@ export default async function DashboardPage() {
         )}
       </Card>
 
-      <div className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Kpi icon={Banknote} label="رصيد الكاش" value={st.cash_balance === null || st.cash_balance === undefined ? null : money(st.cash_balance)} />
-        <Kpi icon={CreditCard} label="رصيد بطاقة البنك" value={st.bank_balance === null || st.bank_balance === undefined ? null : money(st.bank_balance)} />
+      <div className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-5">
+        {st.cash_balance !== null && st.cash_balance !== undefined && <Kpi icon={Banknote} label="رصيد الكاش" value={money(st.cash_balance)} />}
+        {st.bank_balance !== null && st.bank_balance !== undefined && <Kpi icon={CreditCard} label="رصيد بطاقة البنك" value={money(st.bank_balance)} />}
         <Kpi icon={FileClock} label="معاملات قيد الإجراء" value={String(st.in_progress ?? 0)} sub={`${st.completed_month ?? 0} مكتملة هذا الشهر`} href="/transactions" />
         <Kpi icon={AlertTriangle} label="تنبيهات عاجلة" value={String(st.urgent_docs ?? 0)} sub="منتهية أو قريبة الانتهاء" tone={Number(st.urgent_docs) > 0 ? "warn" : undefined} href="/alerts" />
+        {s.perms.has("receivables.view") && <Kpi icon={WalletCards} label="متبقٍ على العملاء" value={money(owedTotal)} sub={`${owing?.length ?? 0} معاملة`} href="/receivables" tone={owedTotal > 0 ? "warn" : undefined} />}
       </div>
 
       <div className="grid gap-4 lg:grid-cols-5">
@@ -141,6 +160,28 @@ export default async function DashboardPage() {
                   </div>
                   <Badge tone={STATUS_TONE[a.bucket]}>{BUCKET_LABEL[a.bucket]} · {daysLabel(a.days_left)}</Badge>
                   <Button asChild size="sm" variant="outline"><Link href="/alerts">إجراء</Link></Button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Card>
+
+        <Card className="lg:col-span-2">
+          <CardHeader title="آخر المعاملات" action={<Button asChild variant="ghost" size="sm"><Link href="/transactions">الكل <ArrowLeft /></Link></Button>} />
+          {!recentTxn?.length ? <Empty title="لا توجد معاملات" /> : (
+            <ul className="divide-y divide-line">
+              {recentTxn.map((t) => (
+                <li key={t.id}>
+                  <Link href={`/transactions/${t.id}`} className="flex items-center gap-3 px-4 py-3 hover:bg-bg">
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-sm font-medium">{t.title}</div>
+                      <div className="truncate text-xs text-ink-3">{t.client_name} · <span className="num">{t.ref_no}</span></div>
+                    </div>
+                    <div className="text-end">
+                      <div className="text-sm font-medium num">{money(t.total)}</div>
+                      <Badge tone={STATUS_TONE[t.status]} className="mt-0.5">{TXN_STATUS_LABEL[t.status]}</Badge>
+                    </div>
+                  </Link>
                 </li>
               ))}
             </ul>
@@ -169,28 +210,6 @@ export default async function DashboardPage() {
             </ul>
           </Card>
         )}
-
-        <Card className="lg:col-span-2">
-          <CardHeader title="آخر المعاملات" action={<Button asChild variant="ghost" size="sm"><Link href="/transactions">الكل <ArrowLeft /></Link></Button>} />
-          {!recentTxn?.length ? <Empty title="لا توجد معاملات" /> : (
-            <ul className="divide-y divide-line">
-              {recentTxn.map((t) => (
-                <li key={t.id}>
-                  <Link href={`/transactions/${t.id}`} className="flex items-center gap-3 px-4 py-3 hover:bg-bg">
-                    <div className="min-w-0 flex-1">
-                      <div className="truncate text-sm font-medium">{t.title}</div>
-                      <div className="truncate text-xs text-ink-3">{t.client_name} · <span className="num">{t.ref_no}</span></div>
-                    </div>
-                    <div className="text-end">
-                      <div className="text-sm font-medium num">{money(t.total)}</div>
-                      <Badge tone={STATUS_TONE[t.status]} className="mt-0.5">{TXN_STATUS_LABEL[t.status]}</Badge>
-                    </div>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          )}
-        </Card>
 
         {canReports && (
           <Card className="lg:col-span-3">

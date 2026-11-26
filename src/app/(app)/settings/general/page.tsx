@@ -39,9 +39,6 @@ export default async function GeneralSettings() {
           <Field label="شروط عرض السعر (تظهر أسفل عرض السعر)" className="sm:col-span-2">
             <Textarea name="quote_terms" defaultValue={o?.quote_terms ?? ""} placeholder="مثال: الأسعار قابلة للتغيير حسب رسوم الجهات الحكومية، ويُبدأ العمل بعد استلام الدفعة المقدمة." />
           </Field>
-          <Field label="رسالة واتساب للتجديد" hint="المتغيرات: {client} اسم العميل، {document} المستند، {date} تاريخ الانتهاء" className="sm:col-span-2">
-            <Textarea name="whatsapp_template" defaultValue={o?.whatsapp_template} className="min-h-24" required />
-          </Field>
         </div>
         <p className="text-xs text-ink-3">العملة: درهم إماراتي (AED)</p>
       </ActionForm>
