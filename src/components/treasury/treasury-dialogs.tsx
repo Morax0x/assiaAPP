@@ -1,4 +1,5 @@
 "use client";
+import { DateField } from "@/components/ui/date-field";
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeftRight, ClipboardCheck, Paperclip, Receipt } from "lucide-react";
@@ -46,7 +47,7 @@ export function ExpenseDialog({ accounts, categories, defaultOpen }: { accounts:
         <Field label="يُدفع من">
           <Select name="account_id" required>{accounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}</Select>
         </Field>
-        <Field label="التاريخ"><Input name="occurred_at" type="date" defaultValue={new Date().toISOString().slice(0, 10)} dir="ltr" className="text-start" /></Field>
+        <Field label="التاريخ"><DateField name="occurred_at" defaultValue={new Date().toISOString().slice(0, 10)} /></Field>
         <Field label="الوصف" className="sm:col-span-2"><Textarea name="description" className="min-h-16" /></Field>
         <div className="sm:col-span-2">
           <label className="flex cursor-pointer items-center gap-2 rounded-ctl border border-dashed border-line-strong bg-bg px-3 py-3 text-sm text-ink-2">
@@ -67,7 +68,7 @@ export function TransferDialog({ accounts }: { accounts: Acc[] }) {
         <Field label="من"><Select name="from" defaultValue={accounts[0]?.id}>{accounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}</Select></Field>
         <Field label="إلى"><Select name="to" defaultValue={accounts[1]?.id ?? accounts[0]?.id}>{accounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}</Select></Field>
         <Field label="المبلغ"><Input name="amount" type="number" step="0.01" min="0.01" required dir="ltr" className="text-start" /></Field>
-        <Field label="تاريخ العملية"><Input name="occurred_at" type="date" defaultValue={new Date().toISOString().slice(0, 10)} max={new Date().toISOString().slice(0, 10)} dir="ltr" className="text-start" /></Field>
+        <Field label="تاريخ العملية"><DateField name="occurred_at" defaultValue={new Date().toISOString().slice(0, 10)} max={new Date().toISOString().slice(0, 10)} /></Field>
         <Field label="رقم العملية / الإيصال (اختياري)"><Input name="reference_no" dir="ltr" className="text-start" /></Field>
         <Field label="ملاحظة"><Input name="note" placeholder="إيداع / سحب" /></Field>
       </div>

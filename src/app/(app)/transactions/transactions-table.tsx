@@ -1,4 +1,5 @@
 "use client";
+import { DateField } from "@/components/ui/date-field";
 import * as React from "react";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Search } from "lucide-react";
@@ -67,8 +68,8 @@ export function TransactionsTable({ rows, clients, staff }: { rows: TxnRow[]; cl
           <option value="">كل الموظفين</option>
           {staff.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
         </Select>
-        <label className="flex items-center gap-2 text-xs text-ink-3">من <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} dir="ltr" className="text-start" /></label>
-        <label className="flex items-center gap-2 text-xs text-ink-3">إلى <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} dir="ltr" className="text-start" /></label>
+        <label className="flex items-center gap-2 text-xs text-ink-3">من <DateField value={from} onChange={setFrom} ariaLabel="من تاريخ" /></label>
+        <label className="flex items-center gap-2 text-xs text-ink-3">إلى <DateField value={to} onChange={setTo} ariaLabel="إلى تاريخ" /></label>
       </div>
       <DataTable
         columns={columns} data={data} rowHref={(r) => `/transactions/${r.id}`} emptyTitle="لا توجد معاملات مطابقة"

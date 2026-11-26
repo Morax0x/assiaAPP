@@ -6,6 +6,7 @@ export async function safe<T>(fn: () => Promise<T>): Promise<Result<T>> {
   } catch (e) {
     // Let Next.js control-flow errors (redirect/notFound) pass through
     if (e && typeof e === "object" && "digest" in e && String((e as { digest: unknown }).digest).startsWith("NEXT_")) throw e;
+    console.error("[action-error]", e instanceof Error ? (e.stack ?? e.message) : JSON.stringify(e));
     const msg = e instanceof Error ? e.message : typeof e === "object" && e && "message" in e ? String((e as { message: unknown }).message) : "حدث خطأ غير متوقع";
     return { ok: false, error: translateError(msg) };
   }

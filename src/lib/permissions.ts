@@ -22,6 +22,9 @@ export const ROLE_LABEL: Record<string, string> = {
   staff: "موظف",
 };
 
+export const CLIENT_KIND_LABEL: Record<string, string> = { individual: "فرد", company: "شركة", sponsor: "كفيل" };
+export const CLIENT_KIND_PLURAL: Record<string, string> = { individual: "أفراد", company: "شركات", sponsor: "كفلاء" };
+
 export const TXN_STATUS_LABEL: Record<string, string> = {
   new: "جديدة",
   in_progress: "قيد الإجراء",

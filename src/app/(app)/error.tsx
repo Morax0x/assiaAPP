@@ -2,9 +2,10 @@
 import { useEffect } from "react";
 import { TriangleAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { reportError } from "@/lib/report-error";
 
 export default function AppError({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
-  useEffect(() => { console.error(error); }, [error]);
+  useEffect(() => { console.error(error); reportError("page", error.message, error.digest); }, [error]);
   return (
     <div className="mx-auto mt-16 max-w-md rounded-card border border-line bg-surface p-8 text-center">
       <TriangleAlert className="mx-auto mb-3 size-9 text-orange" strokeWidth={1.5} />

@@ -7,7 +7,7 @@ import { requireAction } from "@/lib/auth";
 import { safe, formObj, emptyToNull, type Result } from "@/lib/action";
 
 const schema = z.object({
-  kind: z.enum(["individual", "company"]),
+  kind: z.enum(["individual", "company", "sponsor"]),
   name: z.string().min(2, "الاسم مطلوب"),
   phone: z.string().optional(),
   whatsapp: z.string().optional(),

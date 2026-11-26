@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAction } from "@/lib/auth";
 import { safe, type Result } from "@/lib/action";
-import { hashPin, newToken, siteUrl, verifyPin } from "@/lib/share";
+import { hashPin, newShortCode, siteUrl, verifyPin } from "@/lib/share";
 import { signInAs } from "@/lib/sign-in-as";
 
 const DEMO = () => process.env.DEMO_MODE === "1";
@@ -18,9 +18,9 @@ const LOCK_MIN = 15;
 export async function getOfficeLink(): Promise<Result<{ enabled: boolean; url: string | null }>> {
   return safe(async () => {
     await requireAction("users.manage");
-    if (DEMO()) return { enabled: true, url: `${siteUrl()}/enter/demo` };
+    if (DEMO()) return { enabled: true, url: `${siteUrl()}/e/demo` };
     const { data } = await createAdminClient().from("office_access").select("token,enabled").eq("id", true).single();
-    return { enabled: !!data?.enabled && !!data?.token, url: data?.token ? `${siteUrl()}/enter/${data.token}` : null };
+    return { enabled: !!data?.enabled && !!data?.token, url: data?.token ? `${siteUrl()}/e/${data.token}` : null };
   });
 }
 
@@ -28,11 +28,11 @@ export async function getOfficeLink(): Promise<Result<{ enabled: boolean; url: s
 export async function rotateOfficeLink(): Promise<Result<{ url: string }>> {
   return safe(async () => {
     const s = await requireAction("users.manage");
-    if (DEMO()) return { url: `${siteUrl()}/enter/demo` };
-    const token = newToken();
+    if (DEMO()) return { url: `${siteUrl()}/e/demo` };
+    const token = newShortCode();
     const { error } = await createAdminClient().from("office_access").update({ token, enabled: true, rotated_at: new Date().toISOString(), rotated_by: s.userId }).eq("id", true);
     if (error) throw error;
-    return { url: `${siteUrl()}/enter/${token}` };
+    return { url: `${siteUrl()}/e/${token}` };
   });
 }
 
@@ -68,7 +68,7 @@ export async function revokeSessions(userId: string): Promise<Result> {
 async function linkIsValid(token: string) {
   if (DEMO()) return true;
   const { data } = await createAdminClient().from("office_access").select("token,enabled").eq("id", true).single();
-  return !!data?.enabled && !!data.token && data.token === token;
+  return !!data?.enabled && !!data.token && data.token.toLowerCase() === token.toLowerCase();
 }
 
 export type Person = { id: string; name: string; hasPin: boolean };

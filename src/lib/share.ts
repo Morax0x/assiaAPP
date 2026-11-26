@@ -4,6 +4,14 @@ import crypto from "node:crypto";
 export const sha256 = (s: string) => crypto.createHash("sha256").update(s).digest("hex");
 export const newToken = () => crypto.randomBytes(24).toString("base64url");
 
+/** Short, easy-to-type code for the office entry link (8 characters, no look-alikes). 31^8 is about 850 billion combinations. */
+export function newShortCode(len = 8) {
+  const alphabet = "abcdefghjkmnpqrstuvwxyz23456789";
+  let out = "";
+  for (let i = 0; i < len; i++) out += alphabet[crypto.randomInt(alphabet.length)];
+  return out;
+}
+
 export function hashPin(pin: string) {
   const salt = crypto.randomBytes(16).toString("hex");
   const h = crypto.scryptSync(pin, salt, 32).toString("hex");

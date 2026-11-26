@@ -79,7 +79,6 @@ body {
 }
 input, select, textarea, button { font-family: inherit; font-size: inherit; }
 .num { font-variant-numeric: tabular-nums; unicode-bidi: isolate; }
-input[type="date"] { min-height: 2.75rem; }
 select { background-color: var(--color-surface); }
 option { background: var(--color-surface); color: var(--color-ink); }
 

@@ -1,4 +1,5 @@
 "use client";
+import { DateField } from "@/components/ui/date-field";
 import * as React from "react";
 import Link from "next/link";
 import { ChevronDown } from "lucide-react";
@@ -119,7 +120,7 @@ export function TransactionForm({
             </Select>
           </Field>
           <Field label="موعد التسليم المتوقع">
-            <Input name="due_date" type="date" defaultValue={initial.due_date ?? ""} dir="ltr" className="text-start" />
+            <DateField name="due_date" defaultValue={initial.due_date ?? ""} />
           </Field>
           {mode === "new" && <input type="hidden" name="status" value="new" />}
           <Field label="ملاحظات للمكتب فقط" hint="لا تظهر للعميل" className="sm:col-span-2">

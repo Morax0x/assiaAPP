@@ -1,4 +1,5 @@
 "use client";
+import { DateField } from "@/components/ui/date-field";
 import * as React from "react";
 import { Plus } from "lucide-react";
 import { ActionDialog } from "@/components/ui/action-form";
@@ -38,7 +39,7 @@ export function PayDialog({
           <Input name="amount" type="number" step="0.01" min="0.01" required defaultValue={defaultAmount && defaultAmount > 0 ? defaultAmount : ""} dir="ltr" className="text-start" inputMode="decimal" />
         </Field>
         <Field label="تاريخ الدفع">
-          <Input name="occurred_at" type="date" required defaultValue={today} max={today} dir="ltr" className="text-start" />
+          <DateField name="occurred_at" required defaultValue={today} max={today} />
         </Field>
         <Field label="طريقة الدفع">
           <Select name="method" value={method} onChange={(e) => setMethod(e.target.value)}>

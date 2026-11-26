@@ -1,8 +1,8 @@
 "use client";
+import { DateField } from "@/components/ui/date-field";
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/form";
 
 const iso = (d: Date) => d.toISOString().slice(0, 10);
 
@@ -31,8 +31,8 @@ export function RangePicker({ from, to, basePath = "/reports", extra }: { from: 
         ))}
       </div>
       <div className="flex flex-wrap items-end gap-2">
-        <label className="text-xs text-ink-3">من<Input type="date" value={f} onChange={(e) => setF(e.target.value)} dir="ltr" className="mt-1 w-40 text-start" /></label>
-        <label className="text-xs text-ink-3">إلى<Input type="date" value={t} onChange={(e) => setT(e.target.value)} dir="ltr" className="mt-1 w-40 text-start" /></label>
+        <label className="text-xs text-ink-3">من<DateField value={f} onChange={setF} className="mt-1 w-44" /></label>
+        <label className="text-xs text-ink-3">إلى<DateField value={t} onChange={setT} className="mt-1 w-44" /></label>
         <Button onClick={() => f && t && go(f, t)}>عرض</Button>
       </div>
     </div>

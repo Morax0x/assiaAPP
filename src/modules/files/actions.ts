@@ -19,3 +19,21 @@ export async function getUploadTarget(path: string, contentType: string): Promis
     return { mode: "supabase" as const };
   });
 }
+
+/** Writes, reads and deletes a tiny test file to check the storage settings. Owner only. */
+export async function testStorage(): Promise<Result<{ steps: { name: string; ok: boolean; note?: string }[] }>> {
+  return safe(async () => {
+    const s = await requireAction("settings.manage");
+    if (s.profile.role !== "owner") throw new Error("للمالك فقط");
+    const steps: { name: string; ok: boolean; note?: string }[] = [];
+    if (storageMode() !== "s3") {
+      steps.push({ name: "متغيرات S3", ok: false, note: "غير مضبوطة: S3_ENDPOINT و S3_BUCKET و S3_ACCESS_KEY_ID و S3_SECRET_ACCESS_KEY" });
+      return { steps };
+    }
+    steps.push({ name: "متغيرات S3", ok: true });
+    const { storageSelfTest } = await import("@/lib/storage");
+    const r = await storageSelfTest();
+    console.log("[storage-test]", JSON.stringify(r));
+    return { steps: [...steps, ...r] };
+  });
+}

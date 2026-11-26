@@ -1,4 +1,5 @@
 "use client";
+import { DateField } from "@/components/ui/date-field";
 import * as React from "react";
 import { ActionForm } from "@/components/ui/action-form";
 import { Field, Input, Select, Textarea } from "@/components/ui/form";
@@ -38,7 +39,7 @@ export function QuoteForm({
               <Field label="الهاتف"><Input name="client_phone" defaultValue={initial.client_phone ?? ""} dir="ltr" className="text-start" inputMode="tel" /></Field>
             </>
           )}
-          <Field label="صالح حتى"><Input name="valid_until" type="date" defaultValue={defaultValid} dir="ltr" className="text-start" /></Field>
+          <Field label="صالح حتى"><DateField name="valid_until" defaultValue={defaultValid} /></Field>
           <Field label="لغة العرض عند الطباعة">
             <Select name="lang" defaultValue={initial.lang ?? "both"}>
               <option value="both">عربي + English</option><option value="ar">العربية فقط</option><option value="en">English only</option>

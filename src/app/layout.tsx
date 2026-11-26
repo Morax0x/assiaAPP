@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { IBM_Plex_Sans_Arabic } from "next/font/google";
 import { Toaster } from "sonner";
 import { SwRegister } from "@/components/layout/sw-register";
+import { ErrorReporter } from "@/components/layout/error-reporter";
 import "./globals.css";
 
 const plex = IBM_Plex_Sans_Arabic({
@@ -40,6 +41,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {children}
         <Toaster position="top-center" dir="rtl" toastOptions={{ classNames: { toast: "!bg-surface !text-ink !border-line !font-sans !text-[15px]" } }} />
         <SwRegister />
+        <ErrorReporter />
       </body>
     </html>
   );

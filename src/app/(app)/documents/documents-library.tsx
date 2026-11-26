@@ -6,12 +6,12 @@ import { Badge, STATUS_TONE } from "@/components/ui/badge";
 import { Card, Empty } from "@/components/ui/card";
 import { Input, Select } from "@/components/ui/form";
 import { DocumentPreviewButton } from "@/components/documents/document-preview";
-import { BUCKET_LABEL } from "@/lib/permissions";
+import { BUCKET_LABEL, CLIENT_KIND_PLURAL } from "@/lib/permissions";
 import { daysLabel, fmtDate } from "@/lib/utils";
 
 export type LibDoc = {
   id: string; client_id: string; transaction_id: string | null; title: string; issue_date: string | null; expiry_date: string | null;
-  mime_type: string; size_bytes: number; created_at: string; type_id: string; type_name: string; client_name: string; txn_ref: string | null;
+  mime_type: string; size_bytes: number; created_at: string; type_id: string; type_name: string; client_name: string; client_kind: string; txn_ref: string | null;
 };
 
 function bucket(expiry: string | null, critical: number) {
@@ -25,26 +25,28 @@ export function DocumentsLibrary({ docs, types, critical }: { docs: LibDoc[]; ty
   const [q, setQ] = React.useState("");
   const [type, setType] = React.useState("");
   const [status, setStatus] = React.useState("");
-  const [group, setGroup] = React.useState<"client" | "type" | "none">("client");
+  const [group, setGroup] = React.useState<"kind" | "client" | "type" | "none">("kind");
+  const [kind, setKind] = React.useState("");
 
   const list = React.useMemo(() => {
     const t = q.trim().toLowerCase();
     return docs.filter((d) => {
       const b = bucket(d.expiry_date, critical);
-      return (!type || d.type_id === type)
+      return (!type || d.type_id === type) && (!kind || d.client_kind === kind)
         && (!status || (status === "none" ? !b : b?.key === status))
         && (!t || d.title.toLowerCase().includes(t) || d.client_name.toLowerCase().includes(t) || (d.txn_ref ?? "").toLowerCase().includes(t) || d.type_name.toLowerCase().includes(t));
     });
-  }, [docs, q, type, status, critical]);
+  }, [docs, q, type, status, critical, kind]);
 
   const groups = React.useMemo(() => {
     const m = new Map<string, { key: string; title: string; href?: string; items: LibDoc[] }>();
     list.forEach((d) => {
-      const k = group === "client" ? d.client_id : group === "type" ? d.type_id : "all";
-      const g = m.get(k) ?? { key: k, title: group === "client" ? d.client_name : group === "type" ? d.type_name : "كل المستندات", href: group === "client" ? `/clients/${d.client_id}` : undefined, items: [] };
+      const k = group === "kind" ? d.client_kind : group === "client" ? d.client_id : group === "type" ? d.type_id : "all";
+      const g = m.get(k) ?? { key: k, title: group === "kind" ? CLIENT_KIND_PLURAL[d.client_kind] ?? "عملاء" : group === "client" ? d.client_name : group === "type" ? d.type_name : "كل المستندات", href: group === "client" ? `/clients/${d.client_id}` : undefined, items: [] };
       g.items.push(d); m.set(k, g);
     });
-    return [...m.values()].sort((a, b) => a.title.localeCompare(b.title, "ar"));
+    const order = [CLIENT_KIND_PLURAL.individual, CLIENT_KIND_PLURAL.company, CLIENT_KIND_PLURAL.sponsor];
+    return [...m.values()].sort((a, b) => group === "kind" ? order.indexOf(a.title) - order.indexOf(b.title) : a.title.localeCompare(b.title, "ar"));
   }, [list, group]);
 
   return (
@@ -60,7 +62,12 @@ export function DocumentsLibrary({ docs, types, critical }: { docs: LibDoc[]; ty
           {Object.entries(BUCKET_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
           <option value="none">بدون تاريخ انتهاء</option>
         </Select>
-        <Select value={group} onChange={(e) => setGroup(e.target.value as typeof group)} aria-label="التقسيم" className="lg:col-span-2">
+        <Select value={kind} onChange={(e) => setKind(e.target.value)} aria-label="فئة العميل">
+          <option value="">كل الفئات (أفراد، شركات، كفلاء)</option>
+          <option value="individual">أفراد فقط</option><option value="company">شركات فقط</option><option value="sponsor">كفلاء فقط</option>
+        </Select>
+        <Select value={group} onChange={(e) => setGroup(e.target.value as typeof group)} aria-label="التقسيم">
+          <option value="kind">تقسيم حسب الفئة (أفراد / شركات / كفلاء)</option>
           <option value="client">تقسيم حسب العميل</option>
           <option value="type">تقسيم حسب النوع</option>
           <option value="none">بدون تقسيم</option>

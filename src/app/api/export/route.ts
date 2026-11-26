@@ -55,7 +55,7 @@ export async function GET(req: Request) {
     ]);
     const due = new Map<string, number>();
     (owing ?? []).forEach((r) => due.set(r.client_name, (due.get(r.client_name) ?? 0) + Number(r.remaining)));
-    rows = (c ?? []).map((x) => ({ "الاسم": x.name, "النوع": x.kind === "company" ? "شركة" : "فرد", "الهاتف": x.phone ?? "", "البريد": x.email ?? "", "المستحق": due.get(x.name) ?? 0, "تاريخ الإضافة": d(x.created_at) }));
+    rows = (c ?? []).map((x) => ({ "الاسم": x.name, "النوع": x.kind === "company" ? "شركة" : x.kind === "sponsor" ? "كفيل" : "فرد", "الهاتف": x.phone ?? "", "البريد": x.email ?? "", "المستحق": due.get(x.name) ?? 0, "تاريخ الإضافة": d(x.created_at) }));
     name = "العملاء";
   } else if (type === "ledger") {
     if (!s.perms.has("treasury.view")) return new NextResponse("Forbidden", { status: 403 });

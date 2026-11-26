@@ -1,5 +1,5 @@
 import "server-only";
-import { GetObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { DeleteObjectCommand, GetObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isPg } from "@/lib/mode";
@@ -53,4 +53,23 @@ export async function signedDownload(path: string, opts: { seconds?: number; dow
   const { data, error } = await createAdminClient().storage.from("vault").createSignedUrl(path, seconds, opts.downloadName ? { download: opts.downloadName } : undefined);
   if (error || !data) throw new Error("تعذر إنشاء رابط الملف");
   return data.signedUrl;
+}
+
+/** Server-side check of endpoint, bucket and keys (cannot check the browser's CORS rule). */
+export async function storageSelfTest() {
+  const out: { name: string; ok: boolean; note?: string }[] = [];
+  const key = `healthcheck/${crypto.randomUUID()}.txt`;
+  const e = env();
+  const step = async (name: string, fn: () => Promise<unknown>) => {
+    try { await fn(); out.push({ name, ok: true }); return true; }
+    catch (err) {
+      const x = err as { name?: string; message?: string; $metadata?: { httpStatusCode?: number } };
+      out.push({ name, ok: false, note: `${x.name ?? "Error"} (${x.$metadata?.httpStatusCode ?? "?"}): ${x.message ?? ""}`.slice(0, 300) });
+      return false;
+    }
+  };
+  if (!(await step("كتابة ملف تجريبي", () => s3().send(new PutObjectCommand({ Bucket: e.bucket, Key: key, Body: "ok", ContentType: "text/plain" }))))) return out;
+  await step("قراءة الملف", async () => { const r = await s3().send(new GetObjectCommand({ Bucket: e.bucket, Key: key })); await r.Body?.transformToString(); });
+  await step("حذف الملف التجريبي", () => s3().send(new DeleteObjectCommand({ Bucket: e.bucket, Key: key })));
+  return out;
 }

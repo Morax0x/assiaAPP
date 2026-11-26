@@ -1,4 +1,5 @@
 "use client";
+import { DateField } from "@/components/ui/date-field";
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { useDropzone } from "react-dropzone";
@@ -160,10 +161,10 @@ export function DocumentUploader({
           </Field>
         )}
         <Field label="تاريخ الإصدار">
-          <Input type="date" value={issue} onChange={(e) => setIssue(e.target.value)} dir="ltr" className="text-start" />
+          <DateField value={issue} onChange={setIssue} ariaLabel="تاريخ الإصدار" />
         </Field>
         <Field label={renewOf ? "تاريخ الانتهاء الجديد" : "تاريخ الانتهاء"} hint={renewOf ? undefined : "اختياري، يفعّل التنبيهات"}>
-          <Input type="date" value={expiry} onChange={(e) => setExpiry(e.target.value)} dir="ltr" className="text-start" required={!!renewOf} />
+          <DateField value={expiry} onChange={setExpiry} required={!!renewOf} ariaLabel="تاريخ الانتهاء" />
         </Field>
       </div>
 

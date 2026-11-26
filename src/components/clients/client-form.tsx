@@ -11,6 +11,7 @@ export function ClientFields({ v = {} }: { v?: ClientValues }) {
         <Select name="kind" defaultValue={v.kind ?? "individual"}>
           <option value="individual">فرد</option>
           <option value="company">شركة / منشأة</option>
+          <option value="sponsor">كفيل</option>
         </Select>
       </Field>
       <Field label="الاسم"><Input name="name" defaultValue={v.name ?? ""} required /></Field>

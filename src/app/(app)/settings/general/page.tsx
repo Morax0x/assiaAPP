@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { requirePage } from "@/lib/auth";
 import { ExportButton } from "@/components/import-export/export-button";
 import { updateOffice } from "@/modules/settings/actions";
+import { StorageTest } from "./storage-test";
 
 export const metadata = { title: "إعدادات المكتب" };
 
@@ -44,6 +45,13 @@ export default async function GeneralSettings() {
         <p className="text-xs text-ink-3">العملة: درهم إماراتي (AED)</p>
       </ActionForm>
     </Card>
+    {s.profile.role === "owner" && (
+      <Card className="space-y-2 p-4">
+        <div className="text-sm font-semibold">حالة تخزين الملفات</div>
+        <div className="text-xs text-ink-3">اضغط للتأكد أن الخادم يستطيع الكتابة في مخزن Cloudflare. وأي خطأ يظهر هنا وفي سجل Railway.</div>
+        <StorageTest />
+      </Card>
+    )}
     {s.profile.role === "owner" && (
       <Card className="flex flex-wrap items-center justify-between gap-3 p-4">
         <div><div className="text-sm font-semibold">نسخة احتياطية</div><div className="text-xs text-ink-3">ملف Excel يحوي كل بياناتك (العملاء، المعاملات، الخزينة، المستندات). يُنصح بتحميله أسبوعياً.</div></div>

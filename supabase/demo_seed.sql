@@ -240,3 +240,17 @@ update office_settings set email = 'assia_ae@yahoo.com', website = 'assia.ae', b
 update profiles set job_title = 'صاحب المكتب' where id = '00000000-0000-4000-8000-000000000001';
 update profiles set job_title = 'مديرة المكتب', phone = '0502000002', notes = 'تتابع الحسابات والتجديدات' where id = '00000000-0000-4000-8000-000000000002';
 update profiles set job_title = 'موظف خدمات', phone = '0503000003' where id = '00000000-0000-4000-8000-000000000003';
+
+-- sponsors (كفلاء) and their documents
+insert into clients(name, kind, phone, whatsapp, notes) values
+ ('سعيد راشد المنصوري','sponsor','0504567890','0504567890','كفيل لعدد من العاملين'),
+ ('مؤسسة النخبة للكفالة','sponsor','0505671234',null,null);
+do $$
+begin
+  perform set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000003', false);
+  insert into documents(client_id, type_id, title, issue_date, expiry_date, storage_path, mime_type, size_bytes, uploaded_by) values
+   ((select id from clients where name like 'سعيد راشد%'), (select id from document_types where name = 'هوية'), 'هوية الكفيل سعيد', current_date - 400, current_date + 21, 'demo/s1.svg', 'image/svg+xml', 20000, '00000000-0000-4000-8000-000000000003'),
+   ((select id from clients where name like 'سعيد راشد%'), (select id from document_types where name = 'وكالة'), 'وكالة الكفيل', null, null, 'demo/s2.svg', 'image/svg+xml', 20000, '00000000-0000-4000-8000-000000000003'),
+   ((select id from clients where name like 'مؤسسة النخبة%'), (select id from document_types where name = 'رخصة تجارية'), 'رخصة مؤسسة النخبة', current_date - 300, current_date + 65, 'demo/s3.svg', 'image/svg+xml', 20000, '00000000-0000-4000-8000-000000000003');
+  perform set_config('request.jwt.claim.sub', '', false);
+end $$;
