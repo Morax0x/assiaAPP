@@ -1,11 +1,13 @@
 "use client";
 import * as React from "react";
 import Link from "next/link";
-import { Building2, ChevronLeft, ChevronRight, FileText, Folder, FolderOpen, Image as ImageIcon, Search, Handshake, LayoutGrid, List as ListIcon, SlidersHorizontal, Table2, User, Users, X } from "lucide-react";
+import { Building2, Check, ChevronLeft, ChevronRight, FileText, Folder, FolderOpen, Image as ImageIcon, Search, Handshake, LayoutGrid, List as ListIcon, SlidersHorizontal, Table2, Trash2, User, Users, X } from "lucide-react";
 import { Badge, STATUS_TONE } from "@/components/ui/badge";
 import { Card, Empty } from "@/components/ui/card";
 import { Input, Select } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
+import { ConfirmButton } from "@/components/ui/confirm-button";
+import { deleteDocuments } from "@/modules/documents/actions";
 import { DocumentPreviewButton } from "@/components/documents/document-preview";
 import { DocumentEditDialog } from "@/components/documents/document-edit-dialog";
 import { MoveDocumentsDialog, type MoveTarget } from "@/components/documents/move-documents-dialog";
@@ -37,12 +39,13 @@ const KIND_LABEL: Record<string, string> = { individual: "أفراد", company: 
 /** Location in the folder tree. Parts: "k:<kind>", "c:<clientId>", "e" (the employees folder of a company), "d:<folder name>". */
 type Loc = string[];
 
-function FolderTile({ icon: Icon, name, count, alert, dim, hint, onClick }: { icon: typeof Folder; name: string; hint?: string; count: number; alert?: { expired: number; critical: number }; dim?: boolean; onClick: () => void }) {
+function FolderTile({ icon: Icon, name, count, alert, dim, hint, onClick, sel }: { icon: typeof Folder; name: string; hint?: string; sel?: { on: boolean; toggle: () => void }; count: number; alert?: { expired: number; critical: number }; dim?: boolean; onClick: () => void }) {
   return (
     <button
-      type="button" onClick={onClick}
-      className={`group flex min-h-[72px] items-center gap-3 rounded-card border border-line bg-surface p-3 text-start shadow-sm transition hover:border-navy/40 hover:shadow-md ${dim ? "opacity-60" : ""}`}
+      type="button" onClick={sel ? sel.toggle : onClick}
+      className={`group flex min-h-[72px] items-center gap-3 rounded-card border bg-surface p-3 text-start shadow-sm transition hover:border-navy/40 hover:shadow-md ${sel?.on ? "border-navy bg-navy-soft" : "border-line"} ${dim ? "opacity-60" : ""}`}
     >
+      {sel && <span className={`flex size-6 shrink-0 items-center justify-center rounded-md border-2 ${sel.on ? "border-navy bg-navy text-white" : "border-line-strong bg-surface"}`}>{sel.on && <Check className="size-4" strokeWidth={3} />}</span>}
       <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-navy-soft text-navy"><Icon className="size-6" strokeWidth={1.6} /></span>
       <span className="min-w-0 flex-1">
         <span className="block truncate text-[15px] font-semibold" dir="auto">{name}</span>
@@ -53,20 +56,30 @@ function FolderTile({ icon: Icon, name, count, alert, dim, hint, onClick }: { ic
           {alert && alert.critical > 0 && <span className="font-medium text-warn"><span className="num">{alert.critical}</span> قارب</span>}
         </span>
       </span>
-      <ChevronLeft className="size-4 shrink-0 text-ink-3 transition group-hover:-translate-x-0.5 rtl:rotate-0" strokeWidth={1.75} />
+      {!sel && <ChevronLeft className="size-4 shrink-0 text-ink-3 transition group-hover:-translate-x-0.5 rtl:rotate-0" strokeWidth={1.75} />}
     </button>
   );
 }
 
 export function DocumentsLibrary({
-  docs, types, critical, canWrite, canMove, canOpen, moveTargets,
-}: { docs: LibDoc[]; types: { id: string; name: string }[]; critical: number; canWrite: boolean; canMove: boolean; canOpen: boolean; moveTargets: MoveTarget[] }) {
+  docs, types, critical, canWrite, canMove, canOpen, canDelete, moveTargets,
+}: { docs: LibDoc[]; types: { id: string; name: string }[]; critical: number; canWrite: boolean; canMove: boolean; canOpen: boolean; canDelete: boolean; moveTargets: MoveTarget[] }) {
   const [q, setQ] = React.useState("");
   const [type, setType] = React.useState("");
   const [status, setStatus] = React.useState("");
   const [tag, setTag] = React.useState("");
   const [panel, setPanel] = React.useState(false);
   const [wide, setWide] = React.useState(false);
+  const [selecting, setSelecting] = React.useState(false);
+  const [pickedDocs, setPickedDocs] = React.useState<Set<string>>(new Set());
+  const [pickedFolders, setPickedFolders] = React.useState<Map<string, string[]>>(new Map());
+  const allPicked = React.useMemo(() => { const s = new Set(pickedDocs); pickedFolders.forEach((ids) => ids.forEach((i) => s.add(i))); return s; }, [pickedDocs, pickedFolders]);
+  const stopSelecting = () => { setSelecting(false); setPickedDocs(new Set()); setPickedFolders(new Map()); };
+  const toggleDoc = (id: string) => setPickedDocs((p) => { const n = new Set(p); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+  const folderSel = (key: string, ids: string[]) => selecting ? { on: pickedFolders.has(key), toggle: () => setPickedFolders((m) => { const n = new Map(m); if (n.has(key)) n.delete(key); else n.set(key, ids); return n; }) } : undefined;
+  const docBox = (id: string) => selecting ? (
+    <button type="button" onClick={() => toggleDoc(id)} aria-label="تحديد" className={`flex size-6 shrink-0 items-center justify-center rounded-md border-2 ${pickedDocs.has(id) || allPicked.has(id) ? "border-navy bg-navy text-white" : "border-line-strong bg-surface"}`}>{(pickedDocs.has(id) || allPicked.has(id)) && <Check className="size-4" strokeWidth={3} />}</button>
+  ) : null;
   const [view, setView] = React.useState<"cards" | "list" | "table">("cards");
   React.useEffect(() => { try { const v = localStorage.getItem("docview"); if (v === "cards" || v === "list" || v === "table") setView(v); } catch { /* ignore */ } }, []);
   const chooseView = (v: "cards" | "list" | "table") => { setView(v); try { localStorage.setItem("docview", v); } catch { /* ignore */ } };
@@ -192,7 +205,7 @@ export function DocumentsLibrary({
         <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
           {members.map((m) => {
             const all = allOf(m.id);
-            return <FolderTile key={m.id} icon={kind === "company" ? Building2 : User} name={m.name} count={all.length} alert={health(all)} dim={all.length === 0 && !(employeesOf.get(m.id)?.length)} onClick={() => go(`c:${m.id}`)} />;
+            return <FolderTile key={m.id} icon={kind === "company" ? Building2 : User} name={m.name} count={all.length} alert={health(all)} dim={all.length === 0 && !(employeesOf.get(m.id)?.length)} sel={folderSel(`c${m.id}`, all.map((d) => d.id))} onClick={() => go(`c:${m.id}`)} />;
           })}
         </div>
       );
@@ -201,7 +214,7 @@ export function DocumentsLibrary({
       const emps = (employeesOf.get(client.id) ?? []).slice().sort((a, b) => a.name.localeCompare(b.name, "ar"));
       return (
         <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
-          {emps.map((m) => { const own = byClient.get(m.id) ?? []; return <FolderTile key={m.id} icon={User} name={m.name} count={own.length} alert={health(own)} dim={own.length === 0} onClick={() => go(`c:${m.id}`)} />; })}
+          {emps.map((m) => { const own = byClient.get(m.id) ?? []; return <FolderTile key={m.id} icon={User} name={m.name} count={own.length} alert={health(own)} dim={own.length === 0} sel={folderSel(`c${m.id}`, own.map((d) => d.id))} onClick={() => go(`c:${m.id}`)} />; })}
         </div>
       );
     }
@@ -223,9 +236,9 @@ export function DocumentsLibrary({
         <div className="space-y-4">
           {(emps.length > 0 || sub.size > 0) && (
             <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
-              {emps.length > 0 && <FolderTile icon={Users} name="الموظفون" count={empDocs.length} alert={health(empDocs)} onClick={() => go("e")} />}
+              {emps.length > 0 && <FolderTile icon={Users} name="الموظفون" count={empDocs.length} alert={health(empDocs)} sel={folderSel(`e${client.id}`, empDocs.map((d) => d.id))} onClick={() => go("e")} />}
               {[...sub.entries()].sort((a, b) => a[0].localeCompare(b[0], "ar")).map(([name, list]) => (
-                <FolderTile key={name} icon={Folder} name={name} count={list.length} alert={health(list)} onClick={() => go(`d:${name}`)} />
+                <FolderTile key={name} icon={Folder} name={name} count={list.length} alert={health(list)} sel={folderSel(`d${client.id}/${prefix}/${name}`, list.map((d) => d.id))} onClick={() => go(`d:${name}`)} />
               ))}
             </div>
           )}
@@ -251,7 +264,8 @@ export function DocumentsLibrary({
             const Icon = isImg ? ImageIcon : FileText;
             const parent = d.client_parent_id ? clientById.get(d.client_parent_id)?.name : null;
             return (
-              <div key={d.id} className="flex flex-col overflow-hidden rounded-card border border-line bg-surface shadow-sm">
+              <div key={d.id} className={`relative flex flex-col overflow-hidden rounded-card border bg-surface shadow-sm ${allPicked.has(d.id) ? "border-navy ring-2 ring-navy/30" : "border-line"}`}>
+                {selecting && <div className="absolute start-2 top-2 z-10">{docBox(d.id)}</div>}
                 <div className={`flex h-20 items-center justify-center ${isPdf ? "bg-bad-soft text-bad" : isImg ? "bg-navy-soft text-navy" : "bg-mute-soft text-ink-2"}`}>
                   <Icon className="size-9" strokeWidth={1.4} />
                   <span className="ms-2 text-xs font-bold uppercase">{isPdf ? "PDF" : isImg ? "صورة" : "ملف"}</span>
@@ -281,7 +295,7 @@ export function DocumentsLibrary({
           <Card className="hidden md:block">
             <table className="w-full text-sm">
               <thead className="border-b border-line bg-bg text-xs text-ink-3"><tr>
-                <th className="px-4 py-2.5 text-start font-medium">المستند</th><th className="px-3 py-2.5 text-start font-medium">النوع</th>
+                {selecting && <th className="w-10 px-3" />}<th className="px-4 py-2.5 text-start font-medium">المستند</th><th className="px-3 py-2.5 text-start font-medium">النوع</th>
                 {path && <th className="px-3 py-2.5 text-start font-medium">المكان</th>}
                 <th className="px-3 py-2.5 text-start font-medium">الانتهاء</th><th className="px-3 py-2.5 text-start font-medium">الحجم</th><th className="px-3 py-2.5 text-start font-medium">أضيف</th><th />
               </tr></thead>
@@ -290,7 +304,8 @@ export function DocumentsLibrary({
                   const b = bucket(d.expiry_date, critical);
                   const parent = d.client_parent_id ? clientById.get(d.client_parent_id)?.name : null;
                   return (
-                    <tr key={d.id} className="hover:bg-bg">
+                    <tr key={d.id} className={allPicked.has(d.id) ? "bg-navy-soft" : "hover:bg-bg"}>
+                      {selecting && <td className="px-3">{docBox(d.id)}</td>}
                       <td className="max-w-72 truncate px-4 py-2.5 font-medium" dir="auto">{d.title}</td>
                       <td className="px-3 py-2.5 text-ink-2">{d.type_name}</td>
                       {path && <td className="max-w-56 truncate px-3 py-2.5 text-xs text-ink-3" dir="auto">{[KIND_LABEL[d.client_kind], parent, d.client_name, d.folder].filter(Boolean).join(" › ")}</td>}
@@ -320,7 +335,8 @@ export function DocumentsLibrary({
     const Icon = d.mime_type.startsWith("image/") ? ImageIcon : FileText;
     const parent = d.client_parent_id ? clientById.get(d.client_parent_id)?.name : null;
     return (
-      <li key={d.id} className="flex flex-wrap items-center gap-x-3 gap-y-1.5 px-4 py-3">
+      <li key={d.id} className={`flex flex-wrap items-center gap-x-3 gap-y-1.5 px-4 py-3 ${allPicked.has(d.id) ? "bg-navy-soft" : ""}`}>
+        {docBox(d.id)}
         <Icon className="size-5 shrink-0 text-ink-3" strokeWidth={1.6} />
         <div className="min-w-0 flex-1">
           <div className="truncate text-sm font-medium" dir="auto">{d.title}</div>
@@ -344,6 +360,27 @@ export function DocumentsLibrary({
 
   return (
     <div className="space-y-3">
+      {canDelete && (
+        <div className="flex flex-wrap items-center gap-2">
+          {!selecting ? (
+            <Button type="button" variant="outline" size="sm" onClick={() => setSelecting(true)}><Trash2 /> تحديد وحذف</Button>
+          ) : (
+            <div className="sticky top-16 z-10 flex w-full flex-wrap items-center gap-2 rounded-card border border-navy bg-navy-soft px-3 py-2">
+              <span className="text-[15px] font-semibold text-navy"><b className="num">{allPicked.size}</b> مستند محدد</span>
+              <span className="text-xs text-ink-3">اضغط على المجلدات أو المستندات لتحديدها</span>
+              <div className="ms-auto flex gap-2">
+                <ConfirmButton
+                  size="sm" variant="danger" disabled={allPicked.size === 0}
+                  title="حذف المحدد" confirmLabel="احذف"
+                  message={`سيُحذف ${allPicked.size} مستند${pickedFolders.size ? ` (منها محتويات ${pickedFolders.size} مجلد)` : ""}. تبقى ملفات العملاء نفسها، وتجدها في سلة المحذوفات.`}
+                  action={async () => { const r = await deleteDocuments([...allPicked]); if (r.ok) stopSelecting(); return r; }}
+                ><Trash2 /> حذف المحدد</ConfirmButton>
+                <Button type="button" size="sm" variant="outline" onClick={stopSelecting}>إلغاء</Button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
       {/* search + filters: always visible on desktop; behind a button on phones */}
       <div className="space-y-2">
         <div className="flex gap-2">

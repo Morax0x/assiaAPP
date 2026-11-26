@@ -302,3 +302,22 @@ export async function getDocumentClient(documentId: string) {
     };
   });
 }
+
+/** Deletes many documents at once (moved to the trash, restorable). Used by the select-and-delete mode of the documents page. */
+export async function deleteDocuments(ids: string[]) {
+  return safe(async () => {
+    await requireAction("docs.delete");
+    const list = [...new Set(ids)].slice(0, 5000);
+    if (!list.length) throw new Error("لم تحدد شيئاً");
+    const supabase = await createClient();
+    let done = 0;
+    for (let i = 0; i < list.length; i += 10) {
+      const res = await Promise.all(list.slice(i, i + 10).map((id) => supabase.rpc("soft_delete_record", { p_table: "documents", p_id: id })));
+      const bad = res.find((r) => r.error);
+      if (bad?.error) throw bad.error;
+      done += res.length;
+    }
+    ["/documents", "/alerts", "/dashboard"].forEach((x) => revalidatePath(x));
+    return { deleted: done };
+  });
+}
