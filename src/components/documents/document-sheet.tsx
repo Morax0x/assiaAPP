@@ -38,22 +38,20 @@ export function DocumentSheet({ d }: { d: SheetData }) {
   const { lang, office: o } = d;
   const rtl = lang !== "en";
   const isQuote = d.kind === "quote";
-  const showBank = d.kind === "invoice" && (d.remaining ?? 0) > 0 && (o.iban || o.bank_account_no);
+  const showBank = isQuote || (d.kind === "invoice" && (d.remaining ?? 0) > 0);
   const desc = (i: SheetItem) => (lang === "en" ? i.description_en || i.description : lang === "ar" ? i.description : null);
 
   return (
     <div
       dir={rtl ? "rtl" : "ltr"}
       className="relative mx-auto flex w-[210mm] min-h-[297mm] flex-col overflow-hidden text-[#111827] print:shadow-none"
-      style={{ background: "linear-gradient(160deg,#f6f7f9 0%,#eceef2 100%)", printColorAdjust: "exact", WebkitPrintColorAdjust: "exact" }}
+      style={{ backgroundColor: "#f1f1f1", backgroundImage: "url(/brand/background.jpg)", backgroundSize: "100% 100%", backgroundRepeat: "no-repeat", printColorAdjust: "exact", WebkitPrintColorAdjust: "exact" }}
     >
-      {/* decorative header wave + logo (from the office's own invoice design) */}
+      {/* the office's own letterhead is the page background (wave on top, contact bar at the bottom); the logo sits under the wave */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src="/brand/header.png" alt="" className="pointer-events-none absolute" style={{ top: "-16.6mm", left: "-1mm", width: "218mm", transform: "scaleX(-1)" }} />
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src="/brand/logo-full.png" alt="" className="absolute" style={{ right: "-0.3mm", top: "1.4mm", width: "76mm" }} />
+      <img src="/brand/logo-full.png" alt="" className="absolute" style={{ right: "6mm", top: "9mm", width: "56mm" }} />
 
-      <div className="relative flex flex-1 flex-col px-[14mm] pb-[8mm]" style={{ paddingTop: "62mm" }}>
+      <div className="relative flex flex-1 flex-col px-[14mm] pb-[18mm]" style={{ paddingTop: "60mm" }}>
         <div className="text-center">
           {lang !== "en" && <div className="text-[34px] font-extrabold tracking-wide">{TITLES[d.kind].ar}</div>}
           {lang !== "ar" && <div className={`font-extrabold tracking-wide ${lang === "en" ? "text-[44px]" : "text-[40px]"}`} dir="ltr">{TITLES[d.kind].en}</div>}
@@ -144,27 +142,16 @@ export function DocumentSheet({ d }: { d: SheetData }) {
         <div className="mt-auto flex items-end justify-between gap-6 pt-8">
           <div className="text-[12.5px]">
             {showBank && (
-              <div className="mb-4 space-y-1" dir="ltr" style={{ textAlign: "left" }}>
-                <div className="text-[12px] font-extrabold tracking-wide">FOR BANK TRANSFER</div>
-                {o.bank_name && <div>Bank: <b>{o.bank_name}</b></div>}
-                {o.bank_account_name && <div>Account Name: <b>{o.bank_account_name}</b></div>}
-                {o.iban && <div>IBAN: <b>{o.iban}</b></div>}
-                {o.bank_account_no && <div>Account Number: <b>{o.bank_account_no}</b></div>}
-              </div>
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src="/brand/bank.png" alt="Bank transfer details" className="mb-3" style={{ width: "78mm", height: "auto", mixBlendMode: "multiply" }} />
             )}
             <div className="text-[12px] font-extrabold tracking-[0.12em]" dir="ltr">{o.invoice_footer ? o.invoice_footer : "THANK YOU FOR YOUR BUSINESS"}</div>
           </div>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/brand/stamp.png" alt="" style={{ width: "36mm", height: "auto" }} />
+          <img src="/brand/stamp.webp" alt="" style={{ width: "34mm", height: "auto", mixBlendMode: "multiply" }} />
         </div>
       </div>
 
-      <div className="relative flex flex-wrap items-center justify-center gap-x-5 gap-y-1 bg-[#164a8f] px-[10mm] py-[3.2mm] text-[11.5px] text-white" dir="ltr">
-        {o.phone && <span className="flex items-center gap-1.5"><Phone className="size-3.5" />{o.phone}</span>}
-        {o.website && <span className="flex items-center gap-1.5"><Globe className="size-3.5" />{o.website}</span>}
-        {o.email && <span className="flex items-center gap-1.5"><Mail className="size-3.5" />{o.email}</span>}
-        {o.address && <span className="flex items-center gap-1.5"><MapPin className="size-3.5" />{o.address}</span>}
-      </div>
     </div>
   );
 }
