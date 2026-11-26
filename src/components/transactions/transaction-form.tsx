@@ -43,7 +43,7 @@ export function TransactionForm({
   initial?: TxnInitial; mode: "new" | "edit"; submitLabel: string; initialItems?: ItemInit[];
 }) {
   const [totals, setTotals] = React.useState<Totals>({ govt: 0, fee: 0, total: 0 });
-  const [disc, setDisc] = React.useState(String(initial.discount ?? 0));
+  const [disc, setDisc] = React.useState(initial.discount ? String(initial.discount) : "");
   const [acc, setAcc] = React.useState(accounts?.[0]?.id ?? "");
   const [method, setMethod] = React.useState("cash");
   const total = Math.max(0, totals.total - Number(disc || 0));
@@ -110,7 +110,7 @@ export function TransactionForm({
         </summary>
         <div className="grid gap-3 border-t border-line p-4 sm:grid-cols-2">
           <Field label="خصم للعميل">
-            <Input name="discount" type="number" step="0.01" min="0" value={disc} onChange={(e) => setDisc(e.target.value)} dir="ltr" className="text-start" inputMode="decimal" />
+            <Input name="discount" type="number" step="0.01" min="0" placeholder="0" value={disc} onChange={(e) => setDisc(e.target.value)} dir="ltr" className="text-start" inputMode="decimal" />
           </Field>
           <Field label="الموظف المسؤول">
             <Select name="assignee_id" defaultValue={initial.assignee_id ?? ""}>

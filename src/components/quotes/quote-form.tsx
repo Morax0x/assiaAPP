@@ -22,7 +22,7 @@ export function QuoteForm({
 }) {
   const [client, setClient] = React.useState(initial.client_id ?? "");
   const [totals, setTotals] = React.useState<Totals>({ govt: 0, fee: 0, total: 0 });
-  const [disc, setDisc] = React.useState(String(initial.discount ?? 0));
+  const [disc, setDisc] = React.useState(initial.discount ? String(initial.discount) : "");
   const defaultValid = React.useMemo(() => initial.valid_until ?? new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10), [initial.valid_until]);
   return (
     <ActionForm action={action} submitLabel={submitLabel} resetOnSuccess={false}>
@@ -52,7 +52,7 @@ export function QuoteForm({
         <p className="mb-3 text-sm text-ink-3">اختر الخدمة من القائمة فتمتلئ أسعارها، أو أضف بنداً يدوياً.</p>
         <ItemsEditor services={services} initial={initialItems} onTotals={setTotals} />
         <div className="mt-3 grid gap-3 sm:grid-cols-2">
-          <Field label="خصم (اختياري)"><Input name="discount" type="number" min="0" step="0.01" value={disc} onChange={(e) => setDisc(e.target.value)} dir="ltr" className="text-start" inputMode="decimal" /></Field>
+          <Field label="خصم (اختياري)"><Input name="discount" type="number" min="0" step="0.01" placeholder="0" value={disc} onChange={(e) => setDisc(e.target.value)} dir="ltr" className="text-start" inputMode="decimal" /></Field>
           <div className="flex items-end"><div className="flex w-full items-center justify-between rounded-ctl bg-navy-soft px-4 py-2.5"><span className="text-[15px] font-medium text-navy">{mode === "invoice" ? "إجمالي الفاتورة" : "إجمالي العرض"}</span><span className="text-xl font-bold text-navy num">{money(Math.max(0, totals.total - Number(disc || 0)))}</span></div></div>
         </div>
       </section>

@@ -21,8 +21,8 @@ function Fields({ s, categories }: { s?: Service; categories: string[] }) {
         <Input name="category" list={listId} defaultValue={s?.category} placeholder="اختر أو اكتب تصنيفاً جديداً" />
         <datalist id={listId}>{categories.map((c) => <option key={c} value={c} />)}</datalist>
       </Field>
-      <Field label="الرسوم الحكومية الافتراضية" hint="ما يُدفع للجهة الحكومية، وليس ربحاً"><Input name="default_govt_fee" type="number" step="0.01" min="0" defaultValue={s?.govt ?? 0} dir="ltr" className="text-start" inputMode="decimal" /></Field>
-      <Field label="أتعاب المكتب الافتراضية" hint="ربح المكتب"><Input name="default_office_fee" type="number" step="0.01" min="0" defaultValue={s?.fee ?? 0} dir="ltr" className="text-start" inputMode="decimal" /></Field>
+      <Field label="الرسوم الحكومية الافتراضية" hint="ما يُدفع للجهة الحكومية، وليس ربحاً"><Input name="default_govt_fee" type="number" step="0.01" min="0" defaultValue={s?.govt || ""} placeholder="0" dir="ltr" className="text-start" inputMode="decimal" /></Field>
+      <Field label="أتعاب المكتب الافتراضية" hint="ربح المكتب"><Input name="default_office_fee" type="number" step="0.01" min="0" defaultValue={s?.fee || ""} placeholder="0" dir="ltr" className="text-start" inputMode="decimal" /></Field>
     </div>
   );
 }
