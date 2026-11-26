@@ -236,3 +236,7 @@ end $$;
 update office_settings set email = 'assia_ae@yahoo.com', website = 'assia.ae', bank_name = 'Abu Dhabi Islamic Bank',
   bank_account_name = 'Assia Business Services', iban = 'AE220500000000019323724', bank_account_no = '19323724',
   quote_terms = 'الأسعار صالحة للمدة المذكورة وقابلة للتغيير حسب رسوم الجهات الحكومية. يبدأ العمل بعد استلام الدفعة المقدمة.';
+
+update profiles set job_title = 'صاحب المكتب' where id = '00000000-0000-4000-8000-000000000001';
+update profiles set job_title = 'مديرة المكتب', phone = '0502000002', notes = 'تتابع الحسابات والتجديدات' where id = '00000000-0000-4000-8000-000000000002';
+update profiles set job_title = 'موظف خدمات', phone = '0503000003' where id = '00000000-0000-4000-8000-000000000003';

@@ -1,67 +1,79 @@
-import { KeyRound, Plus } from "lucide-react";
+import Link from "next/link";
+import { ChevronLeft, Plus, UserRound } from "lucide-react";
 import { Card, CardHeader } from "@/components/ui/card";
 import { ActionDialog } from "@/components/ui/action-form";
 import { Field, Input, Select } from "@/components/ui/form";
 import { Badge } from "@/components/ui/badge";
 import { createClient } from "@/lib/supabase/server";
 import { requirePage } from "@/lib/auth";
-import { createUserAction, resetPasswordAction } from "@/modules/settings/actions";
-import { ROLE_LABEL } from "@/lib/permissions";
-import { UserControls } from "./user-controls";
+import { PERMISSION_PRESETS } from "@/lib/permissions";
+import { createUser } from "@/modules/users/actions";
+import { getOfficeLink } from "@/modules/auth/enter";
+import { OfficeLinkCard } from "./access-panel";
+import { RestoreUserButton } from "./user-actions";
 
-export const metadata = { title: "الموظفون" };
+export const metadata = { title: "المستخدمون" };
 
 export default async function UsersSettings() {
   const s = await requirePage("users.manage");
   const supabase = await createClient();
-  const { data: users } = await supabase.from("profiles").select("*").order("created_at");
-  const isOwner = s.profile.role === "owner";
+  const { data: users } = await supabase.from("profiles").select("id,full_name,phone,job_title,role,is_active,archived_at").order("created_at");
+  const link = await getOfficeLink();
+  const active = (users ?? []).filter((u) => !u.archived_at);
+  const archived = (users ?? []).filter((u) => u.archived_at);
   return (
-    <Card>
-      <CardHeader
-        title={`المستخدمون (${users?.length ?? 0})`}
-        action={
-          <ActionDialog title="إضافة مستخدم" trigger={<><Plus /> مستخدم</>} triggerProps={{ size: "sm", variant: "primary" }} action={createUserAction}>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <Field label="الاسم الكامل"><Input name="full_name" required /></Field>
-              <Field label="الهاتف"><Input name="phone" dir="ltr" className="text-start" /></Field>
-              <Field label="البريد الإلكتروني"><Input name="email" type="email" required dir="ltr" className="text-start" /></Field>
-              <Field label="كلمة المرور المؤقتة" hint="8 أحرف على الأقل"><Input name="password" type="text" required minLength={8} dir="ltr" className="text-start" autoComplete="off" /></Field>
-              <Field label="الدور" className="sm:col-span-2">
-                <Select name="role" defaultValue="staff">
-                  <option value="staff">{ROLE_LABEL.staff}</option>
-                  {isOwner && <option value="admin">{ROLE_LABEL.admin}</option>}
-                  {isOwner && <option value="owner">{ROLE_LABEL.owner}</option>}
-                </Select>
-              </Field>
-            </div>
-          </ActionDialog>
-        }
-      />
-      <ul className="divide-y divide-line">
-        {(users ?? []).map((u) => {
-          const editable = isOwner || u.role === "staff";
-          return (
-            <li key={u.id} className="flex flex-wrap items-center gap-3 px-4 py-3">
-              <div className="min-w-0 flex-1">
-                <div className="truncate text-sm font-medium">{u.full_name}{u.id === s.userId && <span className="ms-2 text-xs text-ink-3">(أنت)</span>}</div>
-                <div className="text-xs text-ink-3 num">{u.phone ?? ""}</div>
+    <>
+      <OfficeLinkCard enabled={link.ok ? !!link.data?.enabled : false} url={link.ok ? link.data?.url ?? null : null} />
+      <Card>
+        <CardHeader
+          title={`المستخدمون (${active.length})`}
+          action={
+            <ActionDialog title="إضافة مستخدم" trigger={<><Plus /> إضافة مستخدم</>} triggerProps={{ size: "sm", variant: "primary" }} action={createUser}>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Field label="الاسم"><Input name="full_name" required /></Field>
+                <Field label="المسمى (يكتبه كما تريد)"><Input name="job_title" placeholder="مثال: محاسب، مندوب، مديرة المكتب" /></Field>
+                <Field label="الهاتف"><Input name="phone" dir="ltr" className="text-start" inputMode="tel" /></Field>
+                <Field label="صلاحيات البداية" hint="تعدّلها بعد الحفظ كما تشاء">
+                  <Select name="preset" defaultValue="staff">
+                    {(Object.keys(PERMISSION_PRESETS) as (keyof typeof PERMISSION_PRESETS)[]).map((k) => <option key={k} value={k}>{PERMISSION_PRESETS[k].label}</option>)}
+                  </Select>
+                </Field>
+                <p className="text-sm leading-7 text-ink-3 sm:col-span-2">يدخل من رابط المكتب ويختار اسمه ورمزه، فلا حاجة لبريد أو كلمة مرور. اكتبهما فقط إن أردتَ أن يدخل من صفحة تسجيل الدخول العادية:</p>
+                <Field label="البريد (اختياري)"><Input name="email" type="email" dir="ltr" className="text-start" /></Field>
+                <Field label="كلمة المرور (اختياري)"><Input name="password" type="text" minLength={8} dir="ltr" className="text-start" autoComplete="off" /></Field>
               </div>
-              {!u.is_active && <Badge tone="mute">معطّل</Badge>}
-              {editable && u.id !== s.userId ? (
-                <UserControls id={u.id} role={u.role} active={u.is_active} canSetRole={isOwner} />
-              ) : (
-                <Badge tone="navy">{ROLE_LABEL[u.role]}</Badge>
-              )}
-              {editable && (
-                <ActionDialog title={`كلمة مرور جديدة: ${u.full_name}`} trigger={<KeyRound />} triggerProps={{ size: "icon", variant: "ghost" }} action={resetPasswordAction.bind(null, u.id)} submitLabel="تغيير">
-                  <Field label="كلمة المرور الجديدة"><Input name="password" type="text" required minLength={8} dir="ltr" className="text-start" autoComplete="off" /></Field>
-                </ActionDialog>
-              )}
+            </ActionDialog>
+          }
+        />
+        <ul className="divide-y divide-line">
+          {active.map((u) => (
+            <li key={u.id}>
+              <Link href={`/settings/users/${u.id}`} className="flex min-h-16 items-center gap-3 px-4 py-3 hover:bg-bg">
+                <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-navy-soft text-navy"><UserRound className="size-5" strokeWidth={1.75} /></span>
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-[15px] font-semibold">{u.full_name}{u.id === s.userId && <span className="ms-2 text-xs font-normal text-ink-3">(أنت)</span>}{u.role === "owner" && <span className="ms-2 text-xs font-normal text-ink-3">(حساب المالك)</span>}</div>
+                  <div className="truncate text-sm text-ink-3">{[u.job_title, u.phone].filter(Boolean).join(" · ") || "—"}</div>
+                </div>
+                {!u.is_active && <Badge tone="mute">موقوف</Badge>}
+                <ChevronLeft className="size-4 text-ink-3" />
+              </Link>
             </li>
-          );
-        })}
-      </ul>
-    </Card>
+          ))}
+        </ul>
+      </Card>
+      {archived.length > 0 && (
+        <Card className="mt-4">
+          <CardHeader title={`المؤرشفون (${archived.length})`} />
+          <ul className="divide-y divide-line">
+            {archived.map((u) => (
+              <li key={u.id} className="flex items-center gap-3 px-4 py-3 text-sm">
+                <span className="min-w-0 flex-1 truncate text-ink-2">{u.full_name}{u.job_title ? ` · ${u.job_title}` : ""}</span>
+                <RestoreUserButton id={u.id} />
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
+    </>
   );
 }

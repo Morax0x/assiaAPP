@@ -13,7 +13,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     .select("id", { count: "exact", head: true })
     .in("bucket", ["expired", "critical"]);
   return (
-    <AppShell perms={[...s.perms]} user={{ name: s.profile.full_name, role: s.profile.role }} alertCount={count ?? 0}>
+    <AppShell perms={[...s.perms]} user={{ name: s.profile.full_name, role: s.profile.job_title ?? "" }} alertCount={count ?? 0}>
       {process.env.DEMO_MODE === "1" && <DemoBar current={s.profile.role} />}
       {children}
     </AppShell>

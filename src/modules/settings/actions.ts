@@ -2,10 +2,8 @@
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAction } from "@/lib/auth";
 import { safe, formObj, emptyToNull, type Result } from "@/lib/action";
-import { PERMISSIONS } from "@/lib/permissions";
 
 const days = (s: string) =>
   [...new Set(s.split(/[,\s،]+/).map((x) => parseInt(x, 10)).filter((n) => Number.isFinite(n) && n > 0 && n <= 730))].sort((a, b) => b - a);
@@ -79,65 +77,5 @@ export async function deleteTemplate(id: string): Promise<Result> {
     const { error } = await supabase.from("service_templates").update({ is_active: false }).eq("id", id);
     if (error) throw error;
     revalidatePath("/services");
-  });
-}
-
-export async function createUserAction(fd: FormData): Promise<Result> {
-  return safe(async () => {
-    const s = await requireAction("users.manage");
-    const v = z.object({
-      full_name: z.string().min(2, "الاسم مطلوب"), email: z.string().email("البريد غير صالح"),
-      password: z.string().min(8, "كلمة المرور 8 أحرف على الأقل"), role: z.enum(["owner", "admin", "staff"]), phone: z.string().optional(),
-    }).parse(formObj(fd));
-    if (s.profile.role !== "owner" && v.role !== "staff") throw new Error("المدير يستطيع إضافة موظفين فقط");
-    const admin = createAdminClient();
-    const { data, error } = await admin.auth.admin.createUser({ email: v.email, password: v.password, email_confirm: true, user_metadata: { full_name: v.full_name } });
-    if (error) throw new Error(error.message.includes("already") ? "البريد مستخدم مسبقاً" : error.message);
-    const { error: e2 } = await admin.from("profiles").update({ role: v.role, full_name: v.full_name, phone: emptyToNull(v.phone) }).eq("id", data.user.id);
-    if (e2) throw e2;
-    revalidatePath("/settings/users");
-  });
-}
-
-export async function updateUserAction(id: string, patch: { role?: string; is_active?: boolean }): Promise<Result> {
-  return safe(async () => {
-    const s = await requireAction("users.manage");
-    const admin = createAdminClient();
-    const { data: target } = await admin.from("profiles").select("role").eq("id", id).single();
-    if (!target) throw new Error("المستخدم غير موجود");
-    if (s.profile.role !== "owner" && (target.role !== "staff" || (patch.role && patch.role !== "staff"))) throw new Error("لا تملك صلاحية تعديل هذا المستخدم");
-    if (id === s.userId && (patch.is_active === false || (patch.role && patch.role !== s.profile.role))) throw new Error("لا يمكنك تعديل دورك أو تعطيل حسابك");
-    const update: Record<string, unknown> = {};
-    if (patch.role) update.role = z.enum(["owner", "admin", "staff"]).parse(patch.role);
-    if (typeof patch.is_active === "boolean") update.is_active = patch.is_active;
-    const { error } = await admin.from("profiles").update(update).eq("id", id);
-    if (error) throw error;
-    if (patch.is_active === false) await admin.auth.admin.updateUserById(id, { ban_duration: "876000h" });
-    if (patch.is_active === true) await admin.auth.admin.updateUserById(id, { ban_duration: "none" });
-    revalidatePath("/settings/users");
-  });
-}
-
-export async function resetPasswordAction(id: string, fd: FormData): Promise<Result> {
-  return safe(async () => {
-    const s = await requireAction("users.manage");
-    const pw = z.string().min(8, "كلمة المرور 8 أحرف على الأقل").parse(formObj(fd).password);
-    const admin = createAdminClient();
-    const { data: target } = await admin.from("profiles").select("role").eq("id", id).single();
-    if (s.profile.role !== "owner" && target?.role !== "staff") throw new Error("لا تملك صلاحية");
-    const { error } = await admin.auth.admin.updateUserById(id, { password: pw });
-    if (error) throw error;
-  });
-}
-
-export async function setRolePermission(role: "admin" | "staff", permission: string, allowed: boolean): Promise<Result> {
-  return safe(async () => {
-    const s = await requireAction();
-    if (s.profile.role !== "owner") throw new Error("تعديل الصلاحيات لصاحب العمل فقط");
-    if (!PERMISSIONS.some((p) => p.key === permission)) throw new Error("صلاحية غير معروفة");
-    const supabase = await createClient();
-    const { error } = await supabase.from("role_permissions").upsert({ role, permission, allowed }, { onConflict: "role,permission" });
-    if (error) throw error;
-    revalidatePath("/settings/roles");
   });
 }

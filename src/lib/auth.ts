@@ -10,6 +10,8 @@ export type Profile = {
   phone: string | null;
   role: "owner" | "admin" | "staff";
   is_active: boolean;
+  job_title: string | null;
+  archived_at: string | null;
 };
 
 export type Session = { userId: string; email: string; profile: Profile; perms: Set<string> };
@@ -19,16 +21,18 @@ export const getSession = cache(async (): Promise<Session | null> => {
   const { data } = await supabase.auth.getUser();
   if (!data.user) return null;
   const { data: profile } = await supabase.from("profiles").select("*").eq("id", data.user.id).single();
-  if (!profile || !profile.is_active) return null;
+  if (!profile || !profile.is_active || profile.archived_at) return null;
   let perms = new Set<string>();
   if (profile.role === "owner") {
     perms = new Set(PERMISSIONS.map((p) => p.key));
   } else {
-    const { data: rows } = await supabase
-      .from("role_permissions")
-      .select("permission, allowed")
-      .eq("role", profile.role);
-    perms = new Set((rows ?? []).filter((r) => r.allowed).map((r) => r.permission));
+    const [{ data: rows }, { data: mine }] = await Promise.all([
+      supabase.from("role_permissions").select("permission, allowed").eq("role", profile.role),
+      supabase.from("user_permissions").select("permission, allowed").eq("user_id", data.user.id),
+    ]);
+    const m = new Map<string, boolean>((rows ?? []).map((r) => [r.permission as string, !!r.allowed]));
+    (mine ?? []).forEach((r) => m.set(r.permission as string, !!r.allowed));   // personal choices win
+    perms = new Set([...m].filter(([, v]) => v).map(([k]) => k));
   }
   return { userId: data.user.id, email: data.user.email ?? "", profile: profile as Profile, perms };
 });

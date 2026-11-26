@@ -11,7 +11,6 @@ import { Brand, LogoMark } from "@/components/layout/logo";
 import { CommandPalette } from "@/components/layout/command-palette";
 import { DisplayPanel, TopbarDisplay } from "@/components/layout/theme-controls";
 import { cn } from "@/lib/utils";
-import { ROLE_LABEL } from "@/lib/permissions";
 import { signOut } from "@/modules/auth/actions";
 
 type Props = {
@@ -150,7 +149,7 @@ export function AppShell({ children, perms, user, alertCount }: Props) {
             <div className="hidden items-center gap-3 border-s border-line ps-3 md:flex">
               <div className="text-end leading-tight">
                 <div className="text-sm font-medium">{user.name}</div>
-                <div className="text-[11px] text-ink-3">{ROLE_LABEL[user.role]}</div>
+                <div className="text-[11px] text-ink-3">{user.role}</div>
               </div>
               <form action={signOut}>
                 <button className="rounded-md p-2 text-ink-3 hover:bg-mute-soft hover:text-ink" aria-label="تسجيل الخروج" title="تسجيل الخروج">
@@ -179,7 +178,7 @@ export function AppShell({ children, perms, user, alertCount }: Props) {
             <div className="border-t border-line p-3 safe-b">
               <DisplayPanel className="mb-4" />
               <div className="mb-2 text-sm font-medium">{user.name}</div>
-              <div className="mb-3 text-xs text-ink-3">{ROLE_LABEL[user.role]}</div>
+              <div className="mb-3 text-xs text-ink-3">{user.role}</div>
               <form action={signOut}>
                 <button className="flex h-10 w-full items-center justify-center gap-2 rounded-ctl border border-line text-sm text-ink-2">
                   <LogOut className="size-4" strokeWidth={1.75} /> تسجيل الخروج

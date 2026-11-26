@@ -65,3 +65,10 @@ export const FOLLOWUP_LABEL: Record<string, string> = {
   snoozed: "مؤجل",
   done: "منجز",
 };
+
+/** Starting points when adding a person. You can then tick or untick any permission one by one. */
+export const PERMISSION_PRESETS = {
+  staff: { label: "موظف عادي", hint: "العملاء والمعاملات والمستندات والمشاركة", keys: ["clients.write", "txn.write", "docs.write", "share.create"] },
+  manager: { label: "صلاحيات واسعة", hint: "كل شيء تقريباً بما فيه الخزينة والتقارير والمستخدمين", keys: PERMISSIONS.map((p) => p.key) },
+  viewer: { label: "عرض فقط", hint: "يرى فقط ولا يضيف ولا يعدّل", keys: [] as string[] },
+} as const;
