@@ -4,7 +4,7 @@ import { getSession } from "@/lib/auth";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
-const MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+const MODEL = process.env.GEMINI_MODEL || "gemini-3.8-flash";
 const OK_MIME = new Set(["image/jpeg", "image/png", "image/webp"]);
 const DATE = /^(19|20)\d{2}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/;
 const clean = (v: unknown) => (typeof v === "string" && DATE.test(v) ? v : null);
@@ -68,7 +68,7 @@ export async function POST(req: Request) {
   if (!res.ok) {
     const t = await res.text().catch(() => "");
     console.error("[read-document]", res.status, t.slice(0, 300));
-    const msg = res.status === 429 ? "تجاوزت حد القراءة المجاني مؤقتاً، حاول بعد دقيقة" : res.status === 400 || res.status === 403 ? "مفتاح القراءة غير صالح أو الطلب مرفوض" : "تعذرت القراءة";
+    const msg = res.status === 429 ? "تجاوزت حد القراءة المجاني مؤقتاً، حاول بعد دقيقة" : res.status === 404 ? "نموذج القراءة لم يعد متاحاً. غيّر GEMINI_MODEL في الإعدادات" : res.status === 400 || res.status === 403 ? "مفتاح القراءة غير صالح أو الطلب مرفوض" : "تعذرت القراءة";
     return NextResponse.json({ error: msg }, { status: 502 });
   }
   try {
