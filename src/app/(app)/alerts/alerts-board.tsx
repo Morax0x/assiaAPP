@@ -18,6 +18,7 @@ export type AlertRow = {
   id: string; client_id: string; client_name: string; client_phone: string | null; client_whatsapp: string | null;
   type_id: string; type_name: string; title: string; expiry_date: string; days_left: number; bucket: string;
   followup: string; snoozed_until: string | null; notified_at: string | null;
+  owner_name: string; owner_hint: string;
 };
 
 const TABS = [
@@ -83,7 +84,8 @@ export function AlertsBoard({ rows, types, canWrite, canTxn }: { rows: AlertRow[
               <li key={r.id} className={cn("px-4 py-3.5", isSnoozed(r) && "opacity-60")}>
                 <div className="flex flex-wrap items-start gap-x-4 gap-y-2">
                   <div className="min-w-0 flex-1">
-                    <Link href={`/clients/${r.client_id}`} className="text-sm font-semibold hover:text-navy">{r.client_name}</Link>
+                    <Link href={`/clients/${r.client_id}`} className="text-sm font-semibold hover:text-navy">{r.owner_name}</Link>
+                    {r.owner_hint && <span className="ms-2 text-xs text-ink-3">{r.owner_hint}</span>}
                     <div className="mt-0.5 text-sm text-ink-2">{r.type_name} — {r.title}</div>
                     <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-ink-3">
                       <span>ينتهي <span className="num">{fmtDate(r.expiry_date)}</span></span>

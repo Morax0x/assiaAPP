@@ -12,7 +12,7 @@ export async function runAlertsJob() {
   const today = new Date().toISOString().slice(0, 10);
   const [{ data: docs }, { data: os }, { data: types }, { data: sent }] = await Promise.all([
     admin.from("documents")
-      .select("id,title,expiry_date,type_id,followup,snoozed_until,clients(name)")
+      .select("id,title,expiry_date,type_id,followup,snoozed_until,folder,clients(name)")
       .eq("is_current", true).is("deleted_at", null).not("expiry_date", "is", null),
     admin.from("office_settings").select("default_reminder_days").single(),
     admin.from("document_types").select("id,name,reminder_days"),
@@ -33,7 +33,8 @@ export async function runAlertsJob() {
     if (days < 0) threshold = 0;
     else threshold = list.find((x) => days <= x) ?? null;
     if (threshold === null || done.has(`${d.id}:${threshold}`)) continue;
-    due.push({ id: d.id, threshold, days, client: (d as unknown as { clients: { name: string } | null }).clients?.name ?? "", label: `${t?.name ?? "مستند"}` });
+    const segs = ((d as { folder?: string | null }).folder ?? "").split("/").map((x) => x.trim()).filter(Boolean);
+    due.push({ id: d.id, threshold, days, client: segs.length ? segs[segs.length - 1] : (d as unknown as { clients: { name: string } | null }).clients?.name ?? "", label: `${t?.name ?? "مستند"}` });
   }
   if (!due.length) return { sent: 0, docs: 0 };
 
