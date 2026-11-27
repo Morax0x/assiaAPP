@@ -4,7 +4,30 @@ import { getSession } from "@/lib/auth";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
-const MODEL = process.env.GEMINI_MODEL || "gemini-3.8-flash";
+const API = "https://generativelanguage.googleapis.com/v1beta";
+let cached: { name: string; at: number } | null = null;
+
+/**
+ * Picks the newest stable "flash" model the key can use, by asking Google which models exist,
+ * so a retired model name never needs a code or settings change. GEMINI_MODEL overrides it if set.
+ */
+async function pickModel(key: string, refresh = false): Promise<string> {
+  if (process.env.GEMINI_MODEL && !refresh) return process.env.GEMINI_MODEL;
+  if (!refresh && cached && Date.now() - cached.at < 6 * 3600_000) return cached.name;
+  try {
+    const r = await fetch(`${API}/models?pageSize=200`, { headers: { "x-goog-api-key": key }, signal: AbortSignal.timeout(15_000) });
+    if (r.ok) {
+      const j = (await r.json()) as { models?: { name: string; supportedGenerationMethods?: string[] }[] };
+      const best = (j.models ?? [])
+        .filter((m) => (m.supportedGenerationMethods ?? []).includes("generateContent"))
+        .map((m) => ({ id: m.name.replace(/^models\//, ""), v: /^gemini-(\d+(?:\.\d+)?)-flash$/.exec(m.name.replace(/^models\//, "")) }))
+        .filter((m) => m.v)
+        .sort((a, b) => parseFloat(b.v![1]) - parseFloat(a.v![1]))[0];
+      if (best) { cached = { name: best.id, at: Date.now() }; return best.id; }
+    }
+  } catch { /* fall through to the last known name */ }
+  return cached?.name ?? "gemini-flash-latest";
+}
 const OK_MIME = new Set(["image/jpeg", "image/png", "image/webp"]);
 const DATE = /^(19|20)\d{2}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/;
 const clean = (v: unknown) => (typeof v === "string" && DATE.test(v) ? v : null);
@@ -58,17 +81,19 @@ export async function POST(req: Request) {
   };
 
   let res: Response;
+  const call = async (model: string) => fetch(`${API}/models/${model}:generateContent`, {
+    method: "POST", headers: { "Content-Type": "application/json", "x-goog-api-key": key }, body: JSON.stringify(body), signal: AbortSignal.timeout(50_000),
+  });
   try {
-    res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`, {
-      method: "POST", headers: { "Content-Type": "application/json", "x-goog-api-key": key }, body: JSON.stringify(body), signal: AbortSignal.timeout(50_000),
-    });
+    res = await call(await pickModel(key));
+    if (res.status === 404) res = await call(await pickModel(key, true)); // model retired: look up the current one and retry once
   } catch {
     return NextResponse.json({ error: "تعذر الاتصال بخدمة القراءة" }, { status: 502 });
   }
   if (!res.ok) {
     const t = await res.text().catch(() => "");
     console.error("[read-document]", res.status, t.slice(0, 300));
-    const msg = res.status === 429 ? "تجاوزت حد القراءة المجاني مؤقتاً، حاول بعد دقيقة" : res.status === 404 ? "نموذج القراءة لم يعد متاحاً. غيّر GEMINI_MODEL في الإعدادات" : res.status === 400 || res.status === 403 ? "مفتاح القراءة غير صالح أو الطلب مرفوض" : "تعذرت القراءة";
+    const msg = res.status === 429 ? "تجاوزت حد القراءة المجاني مؤقتاً، حاول بعد دقيقة" : res.status === 400 || res.status === 403 ? "مفتاح القراءة غير صالح أو الطلب مرفوض" : "تعذرت القراءة";
     return NextResponse.json({ error: msg }, { status: 502 });
   }
   try {
