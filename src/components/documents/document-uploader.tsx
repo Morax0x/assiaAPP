@@ -4,7 +4,7 @@ import * as React from "react";
 import { useRouter } from "next/navigation";
 import { useDropzone } from "react-dropzone";
 import imageCompression from "browser-image-compression";
-import { Camera, FileUp, X, FileText, Image as ImageIcon } from "lucide-react";
+import { Camera, FileUp, ScanText, X, FileText, Image as ImageIcon } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/form";
@@ -31,8 +31,9 @@ async function prepare(file: File): Promise<File> {
 }
 
 export function DocumentUploader({
-  types, clients, clientId, clientInfo, transactionId, renewOf, onDone, defaultTypeId,
+  types, clients, clientId, clientInfo, transactionId, renewOf, onDone, defaultTypeId, folder,
 }: {
+  folder?: string;
   types: DocType[];
   clients?: ClientOpt[];
   clientId?: string;
@@ -53,6 +54,7 @@ export function DocumentUploader({
   const [expiry, setExpiry] = React.useState("");
   const cameraRef = React.useRef<HTMLInputElement>(null);
   const single = !!renewOf;
+  const [reading, setReading] = React.useState<number | null>(null);
 
   const add = React.useCallback((list: File[]) => {
     const ok = list.filter((f) => {
@@ -66,6 +68,28 @@ export function DocumentUploader({
   const { getRootProps, getInputProps, isDragActive, open } = useDropzone({
     onDrop: add, accept: ACCEPT, multiple: !single, noClick: true, noKeyboard: true,
   });
+
+  async function autoRead() {
+    const f = files[0];
+    if (!f) return;
+    if (!(f.type.startsWith("image/") || f.type === "application/pdf") || /heic/i.test(f.type)) return toast.error("القراءة التلقائية تعمل مع الصور وملفات PDF فقط");
+    setReading(0);
+    try {
+      const { readDocument, guessTypeId } = await import("@/lib/ocr-doc");
+      const r = await readDocument(f, (p) => setReading(Math.round(p * 100)));
+      const guess = guessTypeId(r.text, types);
+      if (guess && !renewOf) { setTypeId(guess); setCustomType(""); }
+      if (r.issue) setIssue(r.issue);
+      if (r.expiry) setExpiry(r.expiry);
+      const found = [guess && !renewOf ? "النوع" : "", r.issue ? "تاريخ الإصدار" : "", r.expiry ? "تاريخ الانتهاء" : ""].filter(Boolean);
+      if (found.length) toast.success(`تمت القراءة: ${found.join(" + ")}. راجعها قبل الرفع`);
+      else toast.warning("لم أستطع قراءة بيانات واضحة. أدخلها يدوياً، أو جرّب صورة أوضح");
+    } catch {
+      toast.error("تعذرت القراءة التلقائية. أدخل البيانات يدوياً");
+    } finally {
+      setReading(null);
+    }
+  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -96,6 +120,7 @@ export function DocumentUploader({
           storage_path: stored,
           mime_type: f.type || "application/octet-stream",
           size_bytes: f.size,
+          folder: folder || null,
         });
       }
       const r = renewOf
@@ -115,6 +140,7 @@ export function DocumentUploader({
 
   return (
     <form onSubmit={submit} className="space-y-4">
+      {folder && <p className="rounded-ctl bg-navy-soft px-3 py-2 text-sm text-navy">سيُحفظ داخل المجلد: <b dir="auto">{folder.split("/").join(" › ")}</b></p>}
       {!clientId && clients && (
         <Field label="العميل">
           <ClientPicker clients={clients} value={client} onChange={setClient} />
@@ -155,6 +181,15 @@ export function DocumentUploader({
             </li>
           ))}
         </ul>
+      )}
+
+      {files.length === 1 && (
+        <div className="flex flex-wrap items-center gap-3 rounded-card border border-dashed border-line px-3 py-2.5">
+          <Button type="button" variant="outline" size="sm" onClick={autoRead} disabled={reading !== null || busy}>
+            <ScanText /> {reading !== null ? `جارٍ القراءة ${reading}%` : "قراءة تلقائية للنوع والتواريخ"}
+          </Button>
+          <span className="text-xs text-ink-3">مجانية وتتم على جهازك دون إرسال المستند لأي جهة. النتيجة اقتراح، راجعها قبل الرفع.</span>
+        </div>
       )}
 
       <div className="grid gap-3 sm:grid-cols-2">

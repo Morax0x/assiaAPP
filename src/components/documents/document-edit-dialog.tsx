@@ -1,7 +1,8 @@
 "use client";
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { Pencil, Trash2 } from "lucide-react";
+import { Eye, EyeOff, Pencil, Trash2 } from "lucide-react";
+import { InlineDocPreview } from "@/components/documents/inline-preview";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
@@ -28,9 +29,10 @@ export function DocumentEditDialog({ doc, clientId, types, iconOnly, folder: fol
   const [folder, setFolder] = React.useState(folder0);
   const [tag, setTag] = React.useState(tag0);
   const [busy, setBusy] = React.useState(false);
+  const [showPreview, setShowPreview] = React.useState(false);
 
   React.useEffect(() => {
-    if (!open) return;
+    if (!open) { setShowPreview(false); return; }
     listClientTransactions(clientId).then((r) => { if (r.ok) setTxns(r.data ?? []); });
   }, [open, clientId]);
 
@@ -54,8 +56,14 @@ export function DocumentEditDialog({ doc, clientId, types, iconOnly, folder: fol
       <DialogTrigger asChild>
         <Button variant="ghost" size={iconOnly ? "icon" : "sm"} aria-label="تعديل المستند" title="تعديل المستند"><Pencil />{!iconOnly && " تعديل"}</Button>
       </DialogTrigger>
-      <DialogContent title="تعديل المستند">
+      <DialogContent title="تعديل المستند" className={showPreview ? "md:max-w-3xl" : undefined}>
         <form onSubmit={save} className="space-y-4">
+          <div className={showPreview ? "sticky top-0 z-10 -mx-1 space-y-2 bg-surface px-1 pb-2" : "space-y-2"}>
+            <Button type="button" variant="outline" size="sm" onClick={() => setShowPreview((v) => !v)}>
+              {showPreview ? <><EyeOff /> إخفاء المعاينة</> : <><Eye /> معاينة المستند</>}
+            </Button>
+            {showPreview && <InlineDocPreview id={doc.id} />}
+          </div>
           <Field label="اسم المستند / الوصف"><Input value={title} onChange={(e) => setTitle(e.target.value)} required maxLength={200} /></Field>
           <div className="grid gap-3 sm:grid-cols-2">
             <DocTypePicker types={types} typeId={typeId} custom={custom} onChange={(t, c) => { setTypeId(t); setCustom(c); }} />

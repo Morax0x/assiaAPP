@@ -8,10 +8,11 @@ import { Input, Select } from "@/components/ui/form";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { ConfirmButton } from "@/components/ui/confirm-button";
-import { deleteClientFolders, deleteDocuments } from "@/modules/documents/actions";
+import { deleteClientFolders, deleteDocuments, deleteFolderPaths } from "@/modules/documents/actions";
 import { ConvertToClientDialog } from "@/components/documents/convert-to-client-dialog";
 import { DocumentPreviewButton } from "@/components/documents/document-preview";
 import { DocumentEditDialog } from "@/components/documents/document-edit-dialog";
+import { NewFolderDialog } from "@/components/documents/new-folder-dialog";
 import { MoveDocumentsDialog, type MoveTarget } from "@/components/documents/move-documents-dialog";
 import { BUCKET_LABEL } from "@/lib/permissions";
 import { daysLabel, fmtDate } from "@/lib/utils";
@@ -64,8 +65,8 @@ function FolderTile({ icon: Icon, name, count, alert, dim, hint, onClick, sel }:
 }
 
 export function DocumentsLibrary({
-  docs, types, critical, canWrite, canMove, canOpen, canDelete, canDeleteClients, canConvert, moveTargets,
-}: { docs: LibDoc[]; types: { id: string; name: string }[]; critical: number; canWrite: boolean; canMove: boolean; canOpen: boolean; canDelete: boolean; canDeleteClients: boolean; canConvert: boolean; moveTargets: MoveTarget[] }) {
+  docs, types, critical, canWrite, canMove, canOpen, canDelete, canDeleteClients, canConvert, canCreateClient, folderRows, moveTargets,
+}: { docs: LibDoc[]; types: { id: string; name: string }[]; critical: number; canWrite: boolean; canMove: boolean; canOpen: boolean; canDelete: boolean; canDeleteClients: boolean; canConvert: boolean; canCreateClient: boolean; folderRows: { client_id: string; path: string }[]; moveTargets: MoveTarget[] }) {
   const [q, setQ] = React.useState("");
   const [type, setType] = React.useState("");
   const [status, setStatus] = React.useState("");
@@ -252,10 +253,24 @@ export function DocumentsLibrary({
           const a = sub.get(next); if (a) a.push(d); else sub.set(next, [d]);
         }
       });
+      folderRows.forEach((r) => {
+        if (r.client_id !== client.id) return;
+        const f = r.path.split("/").filter(Boolean).join("/");
+        if (prefix === "" ? f !== "" : f.startsWith(prefix + "/")) {
+          const next = (prefix === "" ? f : f.slice(prefix.length + 1)).split("/")[0];
+          if (!sub.has(next)) sub.set(next, []);
+        }
+      });
       const emps = !prefix ? employeesOf.get(client.id) ?? [] : [];
       const empDocs = emps.flatMap((e) => byClient.get(e.id) ?? []);
       return (
         <div className="space-y-4">
+          {canWrite && !selecting && (
+            <div className="flex flex-wrap justify-end gap-2">
+              <NewFolderDialog clientId={client.id} parentPath={prefix} canAddEmployee={!prefix && client.kind === "company"} canCreateClient={canCreateClient} />
+              <Link href={`/documents/new?client=${client.id}${prefix ? `&folder=${encodeURIComponent(prefix)}` : ""}`} className="inline-flex h-9 items-center gap-2 rounded-ctl bg-navy px-3 text-sm font-medium text-white hover:bg-navy-hover">رفع إلى هنا</Link>
+            </div>
+          )}
           {(emps.length > 0 || sub.size > 0) && (
             <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
               {emps.length > 0 && <FolderTile icon={Users} name="الموظفون" count={empDocs.length} alert={health(empDocs)} sel={folderSel(`e${client.id}`, empDocs.map((d) => d.id))} onClick={() => go("e")} />}
@@ -392,12 +407,18 @@ export function DocumentsLibrary({
               <span className="text-xs text-ink-3">اضغط على المجلدات أو المستندات لتحديدها</span>
               <div className="ms-auto flex gap-2">
                 {canConvert && allPicked.size > 0 && <ConvertToClientDialog ids={[...allPicked]} companies={companies} onDone={stopSelecting} label="تحويل المحدد إلى ملف عميل" />}
-                {allPicked.size > 0 && (
+                {(allPicked.size > 0 || pickedFolders.size > 0) && (
                 <ConfirmButton
                   size="sm" variant="danger"
                   title="حذف المستندات المحددة" confirmLabel="احذف"
                   message={`سيُحذف ${allPicked.size} مستند${pickedFolders.size ? ` (منها محتويات ${pickedFolders.size} مجلد)` : ""}. تبقى ملفات العملاء، وتجد المستندات في سلة المحذوفات.`}
-                  action={async () => { const r = await deleteDocuments([...allPicked]); if (r.ok) stopSelecting(); return r; }}
+                  action={async () => {
+                    const r = allPicked.size ? await deleteDocuments([...allPicked]) : { ok: true as const, data: { deleted: 0 } };
+                    if (!r.ok) return r;
+                    const subs = [...pickedFolders.keys()].filter((k) => k.startsWith("d")).map((k) => ({ clientId: k.slice(1, 37), path: k.slice(38).replace(/^\//, "") }));
+                    if (subs.length) await deleteFolderPaths(subs);
+                    stopSelecting(); return r;
+                  }}
                 ><Trash2 /> حذف المستندات</ConfirmButton>)}
                 {canDeleteClients && pickedClients.size > 0 && (
                 <ConfirmButton

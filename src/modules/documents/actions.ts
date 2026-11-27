@@ -358,3 +358,39 @@ export async function deleteClientFolders(clientIds: string[]) {
     return { deleted, kept: kept.length, keptNames };
   });
 }
+
+/** Creates an empty sub-folder inside a client's folder (nested folders allowed). */
+export async function createFolder(clientId: string, parentPath: string, name: string) {
+  return safe(async () => {
+    const s = await requireAction("docs.write");
+    const n = name.replace(/[\/]/g, " ").trim().replace(/\s+/g, " ");
+    if (n.length < 1) throw new Error("اكتب اسم المجلد");
+    const path = cleanFolder(`${parentPath}/${n}`);
+    if (!path) throw new Error("اسم غير صالح");
+    const supabase = await createClient();
+    const { error } = await supabase.from("document_folders").upsert({ client_id: clientId, path, created_by: s.userId }, { onConflict: "client_id,path", ignoreDuplicates: true });
+    if (error) throw error;
+    revalidatePath("/documents");
+    return { path };
+  });
+}
+
+/** Removes sub-folders (and anything nested under them) that were created by hand. Documents inside are handled separately. */
+export async function deleteFolderPaths(items: { clientId: string; path: string }[]) {
+  return safe(async () => {
+    await requireAction("docs.delete");
+    const supabase = await createClient();
+    for (const it of items.slice(0, 500)) {
+      const p = cleanFolder(it.path);
+      if (!p) continue;
+      const a = await supabase.from("document_folders").delete().eq("client_id", it.clientId).eq("path", p);
+      if (a.error) throw a.error;
+      const { data: all, error: le } = await supabase.from("document_folders").select("id,path").eq("client_id", it.clientId);
+      if (le) throw le;
+      const nested = ((all ?? []) as { id: string; path: string }[]).filter((x) => x.path.startsWith(p + "/")).map((x) => x.id);
+      if (nested.length) { const b = await supabase.from("document_folders").delete().in("id", nested); if (b.error) throw b.error; }
+    }
+    revalidatePath("/documents");
+    return { ok: true };
+  });
+}
