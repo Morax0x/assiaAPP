@@ -1,6 +1,8 @@
 import { redirect } from "next/navigation";
 import { requireSession } from "@/lib/auth";
 
+export const metadata = { title: "الإعدادات" };
+
 export default async function SettingsIndex() {
   const s = await requireSession();
   if (s.perms.has("settings.manage")) redirect("/settings/general");

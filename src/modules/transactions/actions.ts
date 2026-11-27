@@ -16,6 +16,7 @@ const txnSchema = z.object({
   assignee_id: z.string().optional(),
   discount: num("الخصم").default(0),
   due_date: z.string().optional(),
+  txn_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "تاريخ المعاملة غير صالح").optional().or(z.literal("")),
   status: z.enum(["new", "in_progress", "awaiting_docs", "completed", "cancelled"]).default("new"),
   internal_notes: z.string().optional(),
 });
@@ -40,6 +41,7 @@ function parseTxn(fd: FormData) {
   const title = (v.title && v.title.trim().length >= 2 ? v.title.trim() : titleFromItems(items));
   return {
     items,
+    txnDate: v.txn_date || null,
     row: {
       client_id: v.client_id, title, assignee_id: emptyToNull(v.assignee_id),
       govt_fees: govt, office_fee: fee, discount: v.discount,
@@ -51,9 +53,10 @@ function parseTxn(fd: FormData) {
 export async function createTransaction(fd: FormData): Promise<Result<{ id: string }>> {
   return safe(async () => {
     const s = await requireAction("txn.write");
-    const { row, items } = parseTxn(fd);
+    const { row, items, txnDate } = parseTxn(fd);
     const supabase = await createClient();
-    const { data, error } = await supabase.from("transactions").insert({ ...row, created_by: s.userId }).select("id").single();
+    const created = txnDate && txnDate !== new Date().toISOString().slice(0, 10) ? { created_at: `${txnDate}T12:00:00Z` } : {};
+    const { data, error } = await supabase.from("transactions").insert({ ...row, ...created, created_by: s.userId }).select("id").single();
     if (error) throw error;
     const { error: ie } = await supabase.rpc("set_transaction_items", { p_txn: data.id, p_items: items });
     if (ie) throw ie;
@@ -79,9 +82,14 @@ export async function createTransactionAndGo(fd: FormData): Promise<Result<never
 export async function updateTransaction(id: string, fd: FormData): Promise<Result> {
   return safe(async () => {
     await requireAction("txn.write");
-    const { row, items } = parseTxn(fd);
+    const { row, items, txnDate } = parseTxn(fd);
     const supabase = await createClient();
-    const { error } = await supabase.from("transactions").update(row).eq("id", id);
+    const patch: Record<string, unknown> = { ...row };
+    if (txnDate) {
+      const { data: cur } = await supabase.from("transactions").select("created_at").eq("id", id).single();
+      if (cur && String(cur.created_at).slice(0, 10) !== txnDate) patch.created_at = `${txnDate}T12:00:00Z`;
+    }
+    const { error } = await supabase.from("transactions").update(patch).eq("id", id);
     if (error) throw error;
     const { error: ie } = await supabase.rpc("set_transaction_items", { p_txn: id, p_items: items });
     if (ie) throw ie;

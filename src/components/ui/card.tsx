@@ -3,13 +3,13 @@ import { ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export function Card({ className, ...p }: React.HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn("rounded-card border border-line bg-surface shadow-[0_1px_2px_rgba(15,23,42,0.04)]", className)} {...p} />;
+  return <div className={cn("rounded-card border border-line bg-surface shadow-[0_1px_2px_rgba(15,23,42,0.05),0_4px_14px_-6px_rgba(15,23,42,0.08)]", className)} {...p} />;
 }
 
 export function CardHeader({ title, action, className }: { title: React.ReactNode; action?: React.ReactNode; className?: string }) {
   return (
-    <div className={cn("flex min-h-14 items-center justify-between gap-3 border-b border-line px-4 py-2.5", className)}>
-      <h2 className="text-base font-semibold text-ink">{title}</h2>
+    <div className={cn("flex min-h-14 items-center justify-between gap-3 rounded-t-card border-b border-line bg-bg/60 px-4 py-2.5", className)}>
+      <h2 className="text-base font-bold text-ink">{title}</h2>
       {action}
     </div>
   );

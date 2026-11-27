@@ -12,6 +12,8 @@ import { fmtDate, money } from "@/lib/utils";
 import { QUOTE_LABEL, QUOTE_TONE } from "@/lib/quotes";
 import { QuoteStatusButtons } from "./status-buttons";
 
+export const metadata = { title: "عرض السعر" };
+
 export default async function QuotePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const s = await requirePage();

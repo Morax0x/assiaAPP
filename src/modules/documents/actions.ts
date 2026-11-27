@@ -2,8 +2,7 @@
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { deleteStoredFiles, signedDownload } from "@/lib/storage";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { signedDownload } from "@/lib/storage";
 import { requireAction } from "@/lib/auth";
 import { safe, emptyToNull } from "@/lib/action";
 import { MAX_FILE_BYTES } from "@/lib/keys";
@@ -246,40 +245,6 @@ export async function ensureClient(name: string, kind: "individual" | "company" 
     if (error) throw error;
     revalidatePath("/clients");
     return { id: data.id as string, created: true };
-  });
-}
-
-const WIPE_PHRASE = "حذف كل المستندات";
-
-/**
- * TEMPORARY owner-only tool: permanently deletes every document (database rows and stored files)
- * so a folder import can be redone in the right order. Clients are kept (re-imports reuse them by name).
- */
-export async function wipeAllDocuments(phrase: string) {
-  return safe(async () => {
-    const s = await requireAction("settings.manage");
-    if (s.profile.role !== "owner") throw new Error("للمالك فقط");
-    if (phrase.trim() !== WIPE_PHRASE) throw new Error(`اكتب العبارة «${WIPE_PHRASE}» كما هي للتأكيد`);
-    const admin = createAdminClient();
-    let deleted = 0, files = 0;
-    for (let round = 0; round < 500; round++) {
-      const { data, error } = await admin.from("documents").select("id,storage_path").limit(500);
-      if (error) throw error;
-      const rows = (data ?? []) as { id: string; storage_path: string }[];
-      if (!rows.length) break;
-      const ids = rows.map((r) => r.id);
-      const a = await admin.from("transactions").update({ renewal_of_document: null }).in("renewal_of_document", ids);
-      if (a.error) throw a.error;
-      const b = await admin.from("share_link_documents").delete().in("document_id", ids);
-      if (b.error) throw b.error;
-      files += await deleteStoredFiles(rows.map((r) => r.storage_path));
-      const c = await admin.from("documents").delete().in("id", ids);
-      if (c.error) throw c.error;
-      deleted += ids.length;
-    }
-    console.log(`[wipe-documents] by ${s.userId}: ${deleted} documents, ${files} files`);
-    revalidatePath("/documents"); revalidatePath("/alerts"); revalidatePath("/dashboard");
-    return { deleted, files };
   });
 }
 

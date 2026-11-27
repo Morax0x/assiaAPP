@@ -17,7 +17,7 @@ export type AccountOpt = Opt & { kind: string };
 export type TxnInitial = {
   client_id?: string; title?: string; template_id?: string | null; assignee_id?: string | null;
   govt_fees?: number; office_fee?: number; discount?: number; due_date?: string | null;
-  status?: string; internal_notes?: string | null;
+  status?: string; internal_notes?: string | null; txn_date?: string;
 };
 
 function Step({ n, title, hint, children }: { n: number; title: string; hint?: string; children: React.ReactNode }) {
@@ -58,12 +58,15 @@ export function TransactionForm({
     <ActionForm action={action} submitLabel={submitLabel} resetOnSuccess={mode === "edit"}>
       <Step n={1} title="لمن هذه المعاملة، وما هي؟">
         <div className="grid gap-3 sm:grid-cols-2">
-          <Field label="العميل" hint="">
+          <Field label="العميل" hint="" className="sm:col-span-2">
             <ClientPicker name="client_id" clients={clients} value={clientId} onChange={setClientId} required />
             <Link href="/clients/new" className="mt-1.5 inline-block text-sm font-medium text-navy hover:underline">العميل غير موجود؟ أضفه أولاً</Link>
           </Field>
           <Field label="عنوان المعاملة (اختياري)" hint="إن تركته فارغاً يُكتب تلقائياً من أول بند" className="sm:col-span-2">
             <Input name="title" defaultValue={initial.title ?? ""} placeholder="مثال: تجديد رخصة شركة النور" />
+          </Field>
+          <Field label="تاريخ المعاملة" hint="اتركه كما هو لتاريخ اليوم، أو غيّره لتسجيل معاملة بتاريخ سابق">
+            <DateField name="txn_date" defaultValue={initial.txn_date ?? new Date().toISOString().slice(0, 10)} />
           </Field>
           {mode === "edit" && (
             <Field label="حالة المعاملة">

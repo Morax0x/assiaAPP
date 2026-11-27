@@ -45,7 +45,7 @@ function FolderTile({ icon: Icon, name, count, alert, dim, hint, onClick, sel }:
   return (
     <button
       type="button" onClick={sel ? sel.toggle : onClick}
-      className={`group flex min-h-[72px] items-center gap-3 rounded-card border bg-surface p-3 text-start shadow-sm transition hover:border-navy/40 hover:shadow-md ${sel?.on ? "border-navy bg-navy-soft" : "border-line"} ${dim ? "opacity-60" : ""}`}
+      className={`group flex min-h-[72px] items-center gap-3 rounded-card border bg-surface p-3 text-start shadow-sm transition hover:-translate-y-px hover:border-navy/40 hover:shadow-md ${sel?.on ? "border-navy bg-navy-soft" : "border-line"} ${dim ? "opacity-60" : ""}`}
     >
       {sel && <span className={`flex size-6 shrink-0 items-center justify-center rounded-md border-2 ${sel.on ? "border-navy bg-navy text-white" : "border-line-strong bg-surface"}`}>{sel.on && <Check className="size-4" strokeWidth={3} />}</span>}
       <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-navy-soft text-navy"><Icon className="size-6" strokeWidth={1.6} /></span>
@@ -80,9 +80,13 @@ export function DocumentsLibrary({
   const allPicked = React.useMemo(() => { const s = new Set(pickedDocs); pickedFolders.forEach((ids) => ids.forEach((i) => s.add(i))); return s; }, [pickedDocs, pickedFolders]);
   const stopSelecting = () => { setSelecting(false); setPickedDocs(new Set()); setPickedFolders(new Map()); setPickedClients(new Set()); };
   const toggleDoc = (id: string) => setPickedDocs((p) => { const n = new Set(p); if (n.has(id)) n.delete(id); else n.add(id); return n; });
-  const folderSel = (key: string, ids: string[], clientId?: string) => selecting ? { on: pickedFolders.has(key), toggle: () => {
+  const folderSel = (key: string, ids: string[], clientId?: string | string[]) => selecting ? { on: pickedFolders.has(key), toggle: () => {
+    const on = pickedFolders.has(key);
     setPickedFolders((m) => { const n = new Map(m); if (n.has(key)) n.delete(key); else n.set(key, ids); return n; });
-    if (clientId) setPickedClients((c) => { const n = new Set(c); if (n.has(clientId)) n.delete(clientId); else n.add(clientId); return n; });
+    if (clientId) {
+      const list = Array.isArray(clientId) ? clientId : [clientId];
+      setPickedClients((c) => { const n = new Set(c); list.forEach((x) => { if (on) n.delete(x); else n.add(x); }); return n; });
+    }
   } } : undefined;
   const docBox = (id: string) => selecting ? (
     <button type="button" onClick={() => toggleDoc(id)} aria-label="تحديد" className={`flex size-6 shrink-0 items-center justify-center rounded-md border-2 ${pickedDocs.has(id) || allPicked.has(id) ? "border-navy bg-navy text-white" : "border-line-strong bg-surface"}`}>{(pickedDocs.has(id) || allPicked.has(id)) && <Check className="size-4" strokeWidth={3} />}</button>
@@ -187,8 +191,10 @@ export function DocumentsLibrary({
             const members = moveTargets.filter((t) => t.kind === k.key && !t.parent_id);
             const total = members.reduce((n, t) => n + allOf(t.id).length, 0);
             const alert = health(members.flatMap((t) => allOf(t.id)));
+            const sel = canDeleteClients && members.length > 0 ? folderSel(`k${k.key}`, members.flatMap((t) => allOf(t.id).map((d) => d.id)), members.map((t) => t.id)) : undefined;
             return (
-              <button key={k.key} type="button" onClick={() => go(`k:${k.key}`)} className="group flex items-center gap-4 rounded-card border border-line bg-surface p-4 text-start shadow-sm transition hover:border-navy/40 hover:shadow-md sm:block sm:p-5">
+              <button key={k.key} type="button" onClick={sel ? sel.toggle : () => go(`k:${k.key}`)} className={`group flex items-center gap-4 rounded-card border p-4 text-start shadow-sm transition hover:-translate-y-px hover:border-navy/40 hover:shadow-md sm:block sm:p-5 ${sel?.on ? "border-navy bg-navy-soft" : "border-line bg-surface"}`}>
+                {sel && <span className={`mb-0 flex size-6 shrink-0 items-center justify-center rounded-md border-2 sm:mb-3 ${sel.on ? "border-navy bg-navy text-white" : "border-line-strong bg-surface"}`}>{sel.on && <Check className="size-4" strokeWidth={3} />}</span>}
                 <span className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-navy text-white"><k.icon className="size-7" strokeWidth={1.5} /></span>
                 <span className="min-w-0 sm:block"><span className="block text-lg font-bold sm:mt-3">{k.label}</span>
                 <span className="mt-0.5 block text-sm text-ink-3"><b className="num">{members.length}</b> ملف · <b className="num">{total}</b> مستند</span>

@@ -24,7 +24,7 @@ export default async function EditTransactionPage({ params }: { params: Promise<
           mode="edit" action={updateTransaction.bind(null, id)} submitLabel="حفظ التعديلات"
           clients={clients} templates={templates} staff={staff}
           initialItems={(items ?? []).map((i) => ({ service_id: i.service_id, description: i.description, description_en: i.description_en, qty: Number(i.qty), govt_unit: Number(i.govt_unit), fee_unit: Number(i.fee_unit), item_date: i.item_date }))}
-          initial={{ ...t, govt_fees: Number(t.govt_fees), office_fee: Number(t.office_fee), discount: Number(t.discount) }}
+          initial={{ ...t, govt_fees: Number(t.govt_fees), office_fee: Number(t.office_fee), discount: Number(t.discount), txn_date: String(t.created_at).slice(0, 10) }}
         />
       </Card>
     </div>

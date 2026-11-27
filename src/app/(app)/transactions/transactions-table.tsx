@@ -110,8 +110,8 @@ export function TransactionsTable({ rows, clients, staff, canFees = true }: { ro
             <option value="">كل العملاء</option>
             {clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
           </Select>
-          <label className="flex items-center gap-2 text-xs text-ink-3">من <DateField value={from} onChange={(v) => { setFrom(v); setPreset("custom"); setPage(0); }} ariaLabel="من تاريخ" /></label>
-          <label className="flex items-center gap-2 text-xs text-ink-3">إلى <DateField value={to} onChange={(v) => { setTo(v); setPreset("custom"); setPage(0); }} ariaLabel="إلى تاريخ" /></label>
+          <label className="flex items-center gap-2 text-sm text-ink-3">من <DateField className="flex-1" value={from} onChange={(v) => { setFrom(v); setPreset("custom"); setPage(0); }} ariaLabel="من تاريخ" /></label>
+          <label className="flex items-center gap-2 text-sm text-ink-3">إلى <DateField className="flex-1" value={to} onChange={(v) => { setTo(v); setPreset("custom"); setPage(0); }} ariaLabel="إلى تاريخ" /></label>
         </div>
       </FilterPanel>
 
@@ -162,13 +162,13 @@ export function TransactionsTable({ rows, clients, staff, canFees = true }: { ro
                     <td className="max-w-52 truncate px-3 py-3 font-semibold" dir="auto">{r.client_name}</td>
                     <td className="max-w-56 truncate px-3 py-3" dir="auto">{r.service_name ?? r.title}</td>
                     <td className="px-3 py-3"><Badge tone={STATUS_TONE[r.status]}>{TXN_STATUS_LABEL[r.status]}</Badge></td>
-                    {canFees && <td className="px-3 py-3 num">{money(r.office_fee)}</td>}
-                    {canFees && <td className="px-3 py-3 num">{money(r.govt_fees)}</td>}
-                    <td className="px-3 py-3 font-bold num">{money(r.total)}</td>
+                    {canFees && <td className="whitespace-nowrap px-3 py-3 num">{money(r.office_fee)}</td>}
+                    {canFees && <td className="whitespace-nowrap px-3 py-3 num">{money(r.govt_fees)}</td>}
+                    <td className="whitespace-nowrap px-3 py-3 font-bold num">{money(r.total)}</td>
                     <td className="px-3 py-3"><Badge tone={STATUS_TONE[r.payment_status]}>{PAY_STATUS_LABEL[r.payment_status]}</Badge></td>
                     <td className="px-3 py-3 text-ink-2">{r.method ? METHOD_LABEL[r.method] ?? r.method : "—"}</td>
                     <td className="whitespace-nowrap px-3 py-3 num text-ink-2">{r.paid_on ? fmtDate(r.paid_on) : "—"}</td>
-                    <td className={cn("px-3 py-3 num", r.remaining > 0 ? "font-semibold text-bad" : "text-ink-3")}>{money(r.remaining)}</td>
+                    <td className={cn("whitespace-nowrap px-3 py-3 num", r.remaining > 0 ? "font-semibold text-bad" : "text-ink-3")}>{money(r.remaining)}</td>
                     <td className="px-3 py-3 text-ink-2">{r.assignee_name ?? r.created_by_name ?? "—"}</td>
                   </tr>
                 ))}

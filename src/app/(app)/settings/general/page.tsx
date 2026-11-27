@@ -6,7 +6,6 @@ import { requirePage } from "@/lib/auth";
 import { ExportButton } from "@/components/import-export/export-button";
 import { updateOffice } from "@/modules/settings/actions";
 import { StorageTest } from "./storage-test";
-import { WipeDocuments } from "./wipe-documents";
 
 export const metadata = { title: "إعدادات المكتب" };
 
@@ -54,13 +53,6 @@ export default async function GeneralSettings() {
       <Card className="flex flex-wrap items-center justify-between gap-3 p-4">
         <div><div className="text-sm font-semibold">نسخة احتياطية</div><div className="text-xs text-ink-3">ملف Excel يحوي كل بياناتك (العملاء، المعاملات، الخزينة، المستندات). يُنصح بتحميله أسبوعياً.</div></div>
         <ExportButton type="backup" label="تحميل نسخة احتياطية" />
-      </Card>
-    )}
-    {s.profile.role === "owner" && (
-      <Card className="space-y-2 p-4">
-        <div className="text-sm font-semibold">حذف كل المستندات (مؤقت)</div>
-        <div className="text-xs text-ink-3">لإعادة رفع المجلدات بالترتيب الصحيح. يحذف المستندات والملفات المخزنة فقط، وتبقى العملاء والمعاملات.</div>
-        <WipeDocuments />
       </Card>
     )}
     </div>

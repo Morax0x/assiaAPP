@@ -7,6 +7,8 @@ export function cn(...inputs: ClassValue[]) {
 
 export function money(v: number | string | null | undefined, currency = "AED") {
   const n = Number(v ?? 0);
+  // Negative amounts: isolate as left-to-right so the minus sign stays in front instead of jumping to the end in RTL text.
+  if (n < 0) return `⁦-${currency} ${new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(-n)}⁩`;
   return (
     new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n) +
     " " +

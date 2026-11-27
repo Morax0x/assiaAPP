@@ -15,6 +15,8 @@ import { deleteClientAction, updateClientAction } from "@/modules/clients/action
 import { PAY_STATUS_LABEL, TXN_STATUS_LABEL } from "@/lib/permissions";
 import { fmtDate, money, waNumber } from "@/lib/utils";
 
+export const metadata = { title: "ملف العميل" };
+
 export default async function ClientPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const s = await requirePage();
