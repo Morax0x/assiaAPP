@@ -77,15 +77,17 @@ export function DocumentUploader({
     try {
       const { readDocument, guessTypeId } = await import("@/lib/ocr-doc");
       const r = await readDocument(f, (p) => setReading(Math.round(p * 100)));
+      console.debug("[ocr] text:", r.text);
       const guess = guessTypeId(r.text, types);
       if (guess && !renewOf) { setTypeId(guess); setCustomType(""); }
       if (r.issue) setIssue(r.issue);
       if (r.expiry) setExpiry(r.expiry);
       const found = [guess && !renewOf ? "النوع" : "", r.issue ? "تاريخ الإصدار" : "", r.expiry ? "تاريخ الانتهاء" : ""].filter(Boolean);
-      if (found.length) toast.success(`تمت القراءة: ${found.join(" + ")}. راجعها قبل الرفع`);
+      if (found.length) toast.success(`تمت قراءة: ${found.join(" + ")}`);
       else toast.warning("لم أستطع قراءة بيانات واضحة. أدخلها يدوياً، أو جرّب صورة أوضح");
-    } catch {
-      toast.error("تعذرت القراءة التلقائية. أدخل البيانات يدوياً");
+    } catch (e) {
+      console.error("[ocr]", e);
+      toast.error(`تعذرت القراءة التلقائية${e instanceof Error && e.message ? `: ${e.message}` : ""}`);
     } finally {
       setReading(null);
     }
@@ -188,7 +190,6 @@ export function DocumentUploader({
           <Button type="button" variant="outline" size="sm" onClick={autoRead} disabled={reading !== null || busy}>
             <ScanText /> {reading !== null ? `جارٍ القراءة ${reading}%` : "قراءة تلقائية للنوع والتواريخ"}
           </Button>
-          <span className="text-xs text-ink-3">مجانية وتتم على جهازك دون إرسال المستند لأي جهة. النتيجة اقتراح، راجعها قبل الرفع.</span>
         </div>
       )}
 

@@ -26,9 +26,11 @@ export function findDates(raw: string): string[] {
 /** Picks expiry (the latest date) and issue (the latest earlier date that is not in the future; birth dates lose to it). */
 export function pickDates(dates: string[], today = new Date().toISOString().slice(0, 10)) {
   if (!dates.length) return { issue: null, expiry: null };
-  const expiry = dates[dates.length - 1];
-  const before = dates.filter((d) => d < expiry && d <= today);
-  return { issue: before.length ? before[before.length - 1] : null, expiry: dates.length === 1 && expiry <= today ? null : expiry };
+  const last = dates[dates.length - 1];
+  // a lone date in the past is most likely the issue date, a lone future date the expiry
+  if (dates.length === 1) return last <= today ? { issue: last, expiry: null } : { issue: null, expiry: last };
+  const before = dates.filter((d) => d < last && d <= today);
+  return { issue: before.length ? before[before.length - 1] : null, expiry: last };
 }
 
 /** Words that tell what kind of document it is; each maps to a piece of an Arabic type name to look for. */
