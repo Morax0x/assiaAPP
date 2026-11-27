@@ -5,28 +5,30 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 const API = "https://generativelanguage.googleapis.com/v1beta";
-let cached: { name: string; at: number } | null = null;
+let cached: { names: string[]; at: number } | null = null;
 
 /**
- * Picks the newest stable "flash" model the key can use, by asking Google which models exist,
- * so a retired model name never needs a code or settings change. GEMINI_MODEL overrides it if set.
+ * The usable Gemini models for this key, best first: newest "flash", then "flash-lite" (usually less busy), then the "latest" alias.
+ * Asked from Google itself so a retired model name never needs a code or settings change. GEMINI_MODEL goes first if set.
  */
-async function pickModel(key: string, refresh = false): Promise<string> {
-  if (process.env.GEMINI_MODEL && !refresh) return process.env.GEMINI_MODEL;
-  if (!refresh && cached && Date.now() - cached.at < 6 * 3600_000) return cached.name;
-  try {
-    const r = await fetch(`${API}/models?pageSize=200`, { headers: { "x-goog-api-key": key }, signal: AbortSignal.timeout(15_000) });
-    if (r.ok) {
-      const j = (await r.json()) as { models?: { name: string; supportedGenerationMethods?: string[] }[] };
-      const best = (j.models ?? [])
-        .filter((m) => (m.supportedGenerationMethods ?? []).includes("generateContent"))
-        .map((m) => ({ id: m.name.replace(/^models\//, ""), v: /^gemini-(\d+(?:\.\d+)?)-flash$/.exec(m.name.replace(/^models\//, "")) }))
-        .filter((m) => m.v)
-        .sort((a, b) => parseFloat(b.v![1]) - parseFloat(a.v![1]))[0];
-      if (best) { cached = { name: best.id, at: Date.now() }; return best.id; }
-    }
-  } catch { /* fall through to the last known name */ }
-  return cached?.name ?? "gemini-flash-latest";
+async function modelList(key: string, refresh = false): Promise<string[]> {
+  let names = !refresh && cached && Date.now() - cached.at < 6 * 3600_000 ? cached.names : null;
+  if (!names) {
+    names = [];
+    try {
+      const r = await fetch(`${API}/models?pageSize=200`, { headers: { "x-goog-api-key": key }, signal: AbortSignal.timeout(15_000) });
+      if (r.ok) {
+        const j = (await r.json()) as { models?: { name: string; supportedGenerationMethods?: string[] }[] };
+        const ids = (j.models ?? []).filter((m) => (m.supportedGenerationMethods ?? []).includes("generateContent")).map((m) => m.name.replace(/^models\//, ""));
+        const pick = (re: RegExp) => ids.map((id) => ({ id, v: re.exec(id) })).filter((m) => m.v).sort((x, y) => parseFloat(y.v![1]) - parseFloat(x.v![1])).map((m) => m.id);
+        names = [...pick(/^gemini-(\d+(?:\.\d+)?)-flash$/), ...pick(/^gemini-(\d+(?:\.\d+)?)-flash-lite$/)].slice(0, 4);
+      }
+    } catch { /* use the alias below */ }
+    names = [...names, "gemini-flash-latest"];
+    cached = { names, at: Date.now() };
+  }
+  const env = process.env.GEMINI_MODEL;
+  return env && !refresh ? [env, ...names] : names;
 }
 const OK_MIME = new Set(["image/jpeg", "image/png", "image/webp"]);
 const DATE = /^(19|20)\d{2}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/;
@@ -80,20 +82,26 @@ export async function POST(req: Request) {
     },
   };
 
-  let res: Response;
-  const call = async (model: string) => fetch(`${API}/models/${model}:generateContent`, {
-    method: "POST", headers: { "Content-Type": "application/json", "x-goog-api-key": key }, body: JSON.stringify(body), signal: AbortSignal.timeout(50_000),
+  const call = (model: string) => fetch(`${API}/models/${model}:generateContent`, {
+    method: "POST", headers: { "Content-Type": "application/json", "x-goog-api-key": key }, body: JSON.stringify(body), signal: AbortSignal.timeout(20_000),
   });
+  let res: Response | null = null;
   try {
-    res = await call(await pickModel(key));
-    if (res.status === 404) res = await call(await pickModel(key, true)); // model retired: look up the current one and retry once
-  } catch {
-    return NextResponse.json({ error: "تعذر الاتصال بخدمة القراءة" }, { status: 502 });
-  }
+    let models = await modelList(key);
+    let refreshed = false;
+    for (let i = 0; i < models.length && i < 6; i++) {
+      res = await call(models[i]);
+      if (res.ok) break;
+      if (res.status === 404 && !refreshed) { refreshed = true; models = await modelList(key, true); i = -1; continue; } // retired: look up the current ones
+      if ([404, 429, 500, 503].includes(res.status)) { await new Promise((r) => setTimeout(r, 700)); continue; } // busy: try the next model
+      break;
+    }
+  } catch { /* handled below */ }
+  if (!res) return NextResponse.json({ error: "تعذر الاتصال بخدمة القراءة" }, { status: 502 });
   if (!res.ok) {
     const t = await res.text().catch(() => "");
     console.error("[read-document]", res.status, t.slice(0, 300));
-    const msg = res.status === 429 ? "تجاوزت حد القراءة المجاني مؤقتاً، حاول بعد دقيقة" : res.status === 400 || res.status === 403 ? "مفتاح القراءة غير صالح أو الطلب مرفوض" : "تعذرت القراءة";
+    const msg = res.status === 429 ? "تجاوزت حد القراءة المجاني مؤقتاً، حاول بعد دقيقة" : res.status === 503 ? "خدمة القراءة مشغولة الآن، أعد المحاولة بعد لحظات" : res.status === 400 || res.status === 403 ? "مفتاح القراءة غير صالح أو الطلب مرفوض" : "تعذرت القراءة";
     return NextResponse.json({ error: msg }, { status: 502 });
   }
   try {

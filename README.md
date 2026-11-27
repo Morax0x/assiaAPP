@@ -66,6 +66,7 @@ npm run dev
 | `NEXT_PUBLIC_SITE_URL` | العنوان الحقيقي للتطبيق، تُبنى عليه الروابط المشتركة |
 | `CRON_SECRET` | يحمي فحص التنبيهات `/api/cron/alerts` ويوقّع رموز المشاركة |
 | `S3_ENDPOINT` / `S3_BUCKET` / `S3_ACCESS_KEY_ID` / `S3_SECRET_ACCESS_KEY` / `S3_REGION` | مخزن الملفات. مطلوب عند استخدام Railway |
+| `GEMINI_API_KEY` | اختياري: قراءة المستند تلقائياً (النوع والاسم وتاريخي الإصدار والانتهاء) بمفتاح مجاني من aistudio.google.com، ويختار التطبيق أحدث نموذج متاح بنفسه. بدونه تُستخدم قراءة محلية أقل دقة |
 | `NEXT_PUBLIC_VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` / `VAPID_SUBJECT` | الإشعارات (`npm run vapid` يولّدها) |
 
 عند استخدام Cloudflare R2 أضف قاعدة CORS للـ Bucket تسمح بـ `PUT` من عنوان التطبيق.
