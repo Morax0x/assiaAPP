@@ -75,7 +75,18 @@ export function DocumentUploader({
     if (!(f.type.startsWith("image/") || f.type === "application/pdf") || /heic/i.test(f.type)) return toast.error("القراءة التلقائية تعمل مع الصور وملفات PDF فقط");
     setReading(0);
     try {
-      const { readDocument, guessTypeId } = await import("@/lib/ocr-doc");
+      const { readDocument, readDocumentAI, guessTypeId } = await import("@/lib/ocr-doc");
+      const ai = await readDocumentAI(f, types.map((t) => t.name));
+      if (ai) {
+        const t = ai.type ? types.find((x) => x.name === ai.type) : undefined;
+        if (t && !renewOf) { setTypeId(t.id); setCustomType(""); }
+        if (ai.issue) setIssue(ai.issue);
+        if (ai.expiry) setExpiry(ai.expiry);
+        if (ai.name && files.length === 1 && !title.trim() && !renewOf) setTitle(ai.name);
+        const got = [t && !renewOf ? "النوع" : "", ai.name && !renewOf ? "الاسم" : "", ai.issue ? "تاريخ الإصدار" : "", ai.expiry ? "تاريخ الانتهاء" : ""].filter(Boolean);
+        if (got.length) toast.success(`تمت قراءة: ${got.join(" + ")}`); else toast.warning("لم تظهر بيانات واضحة في المستند");
+        return;
+      }
       const r = await readDocument(f, (p) => setReading(Math.round(p * 100)));
       console.debug("[ocr] text:", r.text);
       const guess = guessTypeId(r.text, types);

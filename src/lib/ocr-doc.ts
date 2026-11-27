@@ -66,6 +66,35 @@ async function pdfFirstPage(file: File): Promise<HTMLCanvasElement> {
   return canvas;
 }
 
+/** First page as a JPEG of at most ~1800px, small enough to send for reading. */
+async function toJpeg(file: File): Promise<Blob> {
+  let src: CanvasImageSource, w: number, h: number;
+  if (file.type === "application/pdf") { const c = await pdfFirstPage(file); src = c; w = c.width; h = c.height; }
+  else { const bmp = await createImageBitmap(file); src = bmp; w = bmp.width; h = bmp.height; }
+  const k = Math.min(1, 1800 / Math.max(w, h));
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.round(w * k); canvas.height = Math.round(h * k);
+  const ctx = canvas.getContext("2d")!;
+  ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.drawImage(src, 0, 0, canvas.width, canvas.height);
+  return await new Promise((res, rej) => canvas.toBlob((b) => (b ? res(b) : rej(new Error("تعذر تجهيز الصورة"))), "image/jpeg", 0.85));
+}
+
+export type AiResult = { type: string | null; name: string | null; issue: string | null; expiry: string | null };
+
+/** Reads the document with the server's vision model. Returns null when the office has not set it up (no key). */
+export async function readDocumentAI(file: File, typeNames: string[]): Promise<AiResult | null> {
+  const jpg = await toJpeg(file);
+  const fd = new FormData();
+  fd.append("file", new File([jpg], "page.jpg", { type: "image/jpeg" }));
+  fd.append("types", typeNames.join("|"));
+  const res = await fetch("/api/read-document", { method: "POST", body: fd });
+  if (res.status === 501) return null;
+  const j = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(j?.error || "تعذرت القراءة");
+  return j as AiResult;
+}
+
 export async function readDocument(file: File, onProgress?: (p: number) => void): Promise<OcrResult> {
   const Tesseract = await import("tesseract.js");
   const input: File | HTMLCanvasElement = file.type === "application/pdf" ? await pdfFirstPage(file) : file;
