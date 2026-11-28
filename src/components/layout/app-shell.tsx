@@ -9,7 +9,7 @@ import {
 import { GROUPS, NAV, type NavItem } from "@/components/layout/nav";
 import { Brand, LogoMark } from "@/components/layout/logo";
 import { CommandPalette } from "@/components/layout/command-palette";
-import { DisplayPanel, FontSizeMini, TopbarDisplay } from "@/components/layout/theme-controls";
+import { DisplayMenuButton, TopbarDisplay } from "@/components/layout/theme-controls";
 import { cn } from "@/lib/utils";
 import { signOut } from "@/modules/auth/actions";
 
@@ -109,7 +109,7 @@ export function AppShell({ children, perms, user, alertCount }: Props) {
         </div>
         <nav className="flex-1 overflow-y-auto p-2"><NavGroups items={items} path={path} collapsed={collapsed} alertCount={alertCount} /></nav>
         <div className="border-t border-line p-2">
-          {!collapsed && <FontSizeMini />}
+          {!collapsed && <DisplayMenuButton className="mb-1 h-9 text-xs text-ink-3" />}
           <button
             onClick={toggle}
             className="flex h-9 w-full items-center justify-center gap-2 rounded-ctl text-xs text-ink-3 hover:bg-mute-soft"
@@ -177,7 +177,7 @@ export function AppShell({ children, perms, user, alertCount }: Props) {
             </div>
             <nav className="min-h-0 flex-1 overflow-y-auto p-2"><NavGroups items={items} path={path} alertCount={alertCount} /></nav>
             <div className="shrink-0 border-t border-line p-3 safe-b">
-              <DisplayPanel compact className="mb-3" />
+              <DisplayMenuButton className="mb-2 border border-line" />
               <div className="flex items-center gap-2">
                 <div className="min-w-0 flex-1 leading-tight">
                   <div className="truncate text-sm font-medium">{user.name}</div>

@@ -1,6 +1,7 @@
 "use client";
 import * as React from "react";
-import { Monitor, Moon, Sun } from "lucide-react";
+import { Monitor, Moon, Palette, Sun } from "lucide-react";
+import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 
 type Theme = "system" | "light" | "dark";
@@ -100,18 +101,18 @@ export function TopbarDisplay() {
   );
 }
 
-/** Small text-size control for the desktop side menu. */
-export function FontSizeMini() {
-  const { fs, setFs } = useDisplayPrefs();
+/** One menu entry that opens the appearance choices (theme + text size) in a dialog. */
+export function DisplayMenuButton({ className }: { className?: string }) {
   return (
-    <div className="mb-2 flex items-center gap-1 px-1" role="group" aria-label="حجم الخط">
-      <span className="me-auto text-[11px] text-ink-3">حجم الخط</span>
-      {SIZES.map((s) => (
-        <button key={s.key} onClick={() => setFs(s.key)} aria-pressed={fs === s.key} aria-label={s.label}
-          className={cn("flex size-7 items-center justify-center rounded-md border font-semibold", s.key === "sm" ? "text-[11px]" : s.key === "md" ? "text-[13px]" : "text-[16px]", fs === s.key ? "border-navy bg-navy-soft text-navy" : "border-line text-ink-2 hover:bg-mute-soft")}>
-          أ
+    <Dialog>
+      <DialogTrigger asChild>
+        <button type="button" className={cn("flex h-10 w-full items-center gap-2 rounded-ctl px-3 text-sm text-ink-2 hover:bg-mute-soft", className)}>
+          <Palette className="size-4" strokeWidth={1.75} /> المظهر وحجم الخط
         </button>
-      ))}
-    </div>
+      </DialogTrigger>
+      <DialogContent title="المظهر وحجم الخط" description="يُحفظ اختيارك على هذا الجهاز.">
+        <DisplayPanel />
+      </DialogContent>
+    </Dialog>
   );
 }
