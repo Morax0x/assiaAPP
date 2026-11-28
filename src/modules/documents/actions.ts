@@ -327,12 +327,19 @@ export async function setClientsKind(clientIds: string[], kind: "individual" | "
     const supabase = await createClient();
     // a company has no parent; its former employees stay attached to the company they belonged to
     const patch = kind === "company" ? { kind, parent_id: null } : { kind };
-    for (let i = 0; i < ids.length; i += 100) {
-      const { error } = await supabase.from("clients").update(patch).is("deleted_at", null).in("id", ids.slice(i, i + 100));
+    // a company that has employees cannot become a person/sponsor: they would be left without their company
+    let skip = new Set<string>();
+    if (kind !== "company") {
+      const { data: kids } = await supabase.from("clients").select("parent_id").is("deleted_at", null).in("parent_id", ids);
+      skip = new Set(((kids ?? []) as { parent_id: string }[]).map((k) => k.parent_id));
+    }
+    const todo = ids.filter((i) => !skip.has(i));
+    for (let i = 0; i < todo.length; i += 100) {
+      const { error } = await supabase.from("clients").update(patch).is("deleted_at", null).in("id", todo.slice(i, i + 100));
       if (error) throw error;
     }
     ["/documents", "/clients", "/alerts", "/dashboard"].forEach((x) => revalidatePath(x));
-    return { changed: ids.length };
+    return { changed: todo.length, skipped: skip.size };
   });
 }
 

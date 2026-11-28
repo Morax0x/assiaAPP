@@ -408,7 +408,7 @@ export function DocumentsLibrary({
               <span className="text-xs text-ink-3">اضغط على المجلدات أو المستندات لتحديدها</span>
               <div className="ms-auto flex gap-2">
                 {canWrite && canMove && allPicked.size > 0 && <MoveDocumentsDialog ids={[...allPicked]} currentClientId="" targets={moveTargets} onDone={stopSelecting} label="جعلها مستندات عميل / موظف" />}
-                {canConvert && allPicked.size > 0 && <ConvertToClientDialog ids={[...allPicked]} companies={companies} onDone={stopSelecting} label="تحويل المحدد إلى ملف عميل" />}
+                {canConvert && pickedDocs.size > 0 && pickedFolders.size === 0 && <ConvertToClientDialog ids={[...allPicked]} companies={companies} onDone={stopSelecting} label="نقل المستندات المحددة إلى ملف عميل جديد" />}
                 {canDelete && (allPicked.size > 0 || pickedFolders.size > 0) && (
                 <ConfirmButton
                   size="sm" variant="danger"
@@ -422,18 +422,20 @@ export function DocumentsLibrary({
                     stopSelecting(); return r;
                   }}
                 ><Trash2 /> حذف المستندات</ConfirmButton>)}
-                {canConvert && pickedClients.size > 0 && (
+                {canConvert && pickedClients.size > 0 && (["company", "individual", "sponsor"] as const).map((k) => (
                 <ConfirmButton
+                  key={k}
                   size="sm" variant="outline"
-                  title="تحويل المحدد إلى شركات" confirmLabel="حوّل إلى شركات"
-                  message={`سيصبح ${pickedClients.size} ملف شركات (يُنقل من الأفراد أو الكفلاء أو الموظفين إلى قسم الشركات). المستندات والمعاملات تبقى كما هي.`}
+                  title={`جعل المحدد ${KIND_LABEL[k]}`} confirmLabel="نعم، حوّل"
+                  message={`سيصبح ${pickedClients.size} ملف ضمن «${KIND_LABEL[k]}». يتغير نوع الملف فقط، ولا يُنقل أو يُحذف أي مستند.`}
                   action={async () => {
-                    const r = await setClientsKind([...pickedClients], "company");
+                    const r = await setClientsKind([...pickedClients], k);
                     if (!r.ok) return r;
-                    toast.success(`تم تحويل ${r.data!.changed} ملف إلى شركات`);
+                    toast.success(`تم تحويل ${r.data!.changed} ملف إلى «${KIND_LABEL[k]}»`);
+                    if (r.data!.skipped > 0) toast.warning(`تُرك ${r.data!.skipped} ملف لأن فيه موظفين`);
                     stopSelecting(); return r;
                   }}
-                ><Building2 /> جعل المحدد شركات</ConfirmButton>)}
+                >{k === "company" ? <Building2 /> : k === "individual" ? <User /> : <Handshake />} جعلها {KIND_LABEL[k]}</ConfirmButton>))}
                 {canDeleteClients && pickedClients.size > 0 && (
                 <ConfirmButton
                   size="sm" variant="danger"
