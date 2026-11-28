@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, PageHeader } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/server";
 import { requirePage } from "@/lib/auth";
-import { ExpenseDialog, ReconcileDialog, TransferDialog } from "@/components/treasury/treasury-dialogs";
+import { BalancesDialog, ExpenseDialog, ReconcileDialog, TransferDialog } from "@/components/treasury/treasury-dialogs";
 import { LedgerList, type LedgerRow } from "./ledger-list";
 import { ExportButton } from "@/components/import-export/export-button";
 import { fmtDateTime, money } from "@/lib/utils";
@@ -36,6 +36,7 @@ export default async function TreasuryPage({ searchParams }: { searchParams: Pro
           <>
             {canWrite && <ExpenseDialog accounts={accounts} categories={cats ?? []} defaultOpen={neu === "expense"} />}
             {canWrite && accounts.length > 1 && <TransferDialog accounts={accounts} />}
+            {canWrite && <BalancesDialog accounts={accounts} />}
             {canWrite && <ReconcileDialog accounts={accounts} />}
             <Button asChild variant="outline"><Link href="/treasury/statement">كشف حساب</Link></Button>
             <ExportButton type="ledger" label="تصدير الحركات" />

@@ -2,13 +2,15 @@
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAction } from "@/lib/auth";
 import { safe, formObj, emptyToNull, type Result } from "@/lib/action";
 
 const expenseSchema = z.object({
   amount: z.coerce.number().positive("المبلغ يجب أن يكون أكبر من صفر"),
   account_id: z.string().uuid("اختر الحساب"),
-  category_id: z.string().uuid("اختر البند"),
+  category_id: z.string().min(1, "اختر البند"),
+  category_new: z.string().max(60).optional(),
   description: z.string().optional(),
   receipt_path: z.string().optional(),
   occurred_at: z.string().optional(),
@@ -24,9 +26,23 @@ export async function addExpense(fd: FormData): Promise<Result> {
     const v = expenseSchema.parse(formObj(fd));
     if (v.receipt_path && !v.receipt_path.startsWith("expenses/")) throw new Error("مسار الإيصال غير صالح");
     const supabase = await createClient();
+    // the item can be typed by hand (or the built-in "رصيد"): reuse an existing item with that name, else create it
+    let categoryId = v.category_id;
+    if (!/^[0-9a-f-]{36}$/i.test(categoryId)) {
+      const name = (categoryId === "__new" ? v.category_new ?? "" : categoryId.replace(/^new:/, "")).trim().replace(/\s+/g, " ");
+      if (name.length < 2) throw new Error("اكتب اسم البند");
+      const admin = createAdminClient();
+      const { data: ex } = await admin.from("expense_categories").select("id").ilike("name", name.replace(/[%_]/g, "")).limit(1);
+      if (ex?.[0]) categoryId = ex[0].id as string;
+      else {
+        const { data: made, error: ce } = await admin.from("expense_categories").insert({ name }).select("id").single();
+        if (ce) throw ce;
+        categoryId = made.id as string;
+      }
+    }
     const { error } = await supabase.from("ledger_entries").insert({
       account_id: v.account_id, direction: "out", kind: "expense", amount: v.amount,
-      category_id: v.category_id, description: emptyToNull(v.description), receipt_path: emptyToNull(v.receipt_path),
+      category_id: categoryId, description: emptyToNull(v.description), receipt_path: emptyToNull(v.receipt_path),
       occurred_at: v.occurred_at ? new Date(v.occurred_at).toISOString() : new Date().toISOString(),
       created_by: s.userId,
     });
@@ -62,6 +78,31 @@ export async function reconcile(fd: FormData): Promise<Result> {
     const supabase = await createClient();
     const { error } = await supabase.rpc("reconcile_account", { p_account: v.account_id, p_actual: v.actual, p_note: emptyToNull(v.note), p_adjust: o.adjust === "on" });
     if (error) throw error;
+    done();
+  });
+}
+
+/** Sets the cash/card balances to the numbers the office really has: each changed account gets one adjustment entry for the difference. */
+export async function setBalances(fd: FormData): Promise<Result> {
+  return safe(async () => {
+    await requireAction("treasury.write");
+    const o = formObj(fd);
+    const supabase = await createClient();
+    const { data: bal } = await supabase.from("account_balances").select("account_id,balance");
+    const cur = new Map((bal ?? []).map((b) => [b.account_id as string, Number(b.balance)]));
+    let changed = 0;
+    for (const [k, raw] of Object.entries(o)) {
+      if (!k.startsWith("bal_") || String(raw).trim() === "") continue;
+      const id = k.slice(4);
+      const target = Number(raw);
+      if (!z.string().uuid().safeParse(id).success || !Number.isFinite(target)) throw new Error("مبلغ غير صالح");
+      const now = cur.get(id);
+      if (now === undefined || Math.abs(target - now) < 0.005) continue;
+      const { error } = await supabase.rpc("reconcile_account", { p_account: id, p_actual: target, p_note: emptyToNull(String(o.note ?? "")) ?? "تعديل الرصيد يدوياً", p_adjust: true });
+      if (error) throw error;
+      changed++;
+    }
+    if (!changed) throw new Error("لم يتغير أي رصيد");
     done();
   });
 }
