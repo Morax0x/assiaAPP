@@ -4,7 +4,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "آسيا لخدمات رجال الأعمال",
     short_name: "آسيا",
-    description: "إدارة المعاملات والخزينة والمستندات",
+    description: "منظومة متكاملة لإدارة المعاملات والعملاء والمستندات والخزينة",
     start_url: "/dashboard",
     scope: "/",
     display: "standalone",

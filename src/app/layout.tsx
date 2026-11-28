@@ -17,8 +17,15 @@ const kufi = Noto_Kufi_Arabic({ subsets: ["arabic"], weight: ["400", "700"], var
 const montserrat = Montserrat({ subsets: ["latin"], weight: ["700"], variable: "--font-montserrat", display: "swap", preload: false });
 
 export const metadata: Metadata = {
+  metadataBase: new URL((process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000").replace(/\/$/, "")),
   title: { default: "آسيا لخدمات رجال الأعمال", template: "%s | آسيا" },
-  description: "نظام إدارة المعاملات والخزينة والمستندات",
+  description: "منظومة متكاملة لإدارة المعاملات والعملاء والمستندات والخزينة، بدقة وسهولة وأمان.",
+  openGraph: {
+    type: "website", locale: "ar_AE", siteName: "آسيا لخدمات رجال الأعمال",
+    title: "آسيا لخدمات رجال الأعمال",
+    description: "منظومة متكاملة لإدارة المعاملات والعملاء والمستندات والخزينة، بدقة وسهولة وأمان.",
+    images: [{ url: "/logo.png", width: 600, height: 625, alt: "آسيا" }],
+  },
   applicationName: "آسيا",
   appleWebApp: { capable: true, title: "آسيا", statusBarStyle: "default" },
   robots: { index: false, follow: false },

@@ -2,7 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { isPg, SESSION_COOKIE } from "@/lib/mode";
 
-const PUBLIC = ["/login", "/share", "/manifest.webmanifest", "/sw.js", "/icons", "/api/cron", "/api/share", "/enter", "/e"];
+const PUBLIC = ["/login", "/share", "/manifest.webmanifest", "/logo.png", "/sw.js", "/icons", "/api/cron", "/api/share", "/enter", "/e"];
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
