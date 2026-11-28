@@ -19,11 +19,11 @@ const montserrat = Montserrat({ subsets: ["latin"], weight: ["700"], variable: "
 export const metadata: Metadata = {
   metadataBase: new URL((process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000").replace(/\/$/, "")),
   title: { default: "آسيا لخدمات رجال الأعمال", template: "%s | آسيا" },
-  description: "معاملاتك ومستنداتك وحساباتك، منظّمة في مكان واحد.",
+  description: "إدارة المكتب من مكان واحد.",
   openGraph: {
     type: "website", locale: "ar_AE", siteName: "آسيا لخدمات رجال الأعمال",
     title: "آسيا لخدمات رجال الأعمال",
-    description: "معاملاتك ومستنداتك وحساباتك، منظّمة في مكان واحد.",
+    description: "إدارة المكتب من مكان واحد.",
     images: [{ url: "/logo.png", width: 600, height: 625, alt: "آسيا" }],
   },
   applicationName: "آسيا",
