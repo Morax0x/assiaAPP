@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 
 const METHOD = {
   cash: { ar: "كاش", en: "Cash" }, bank_card: { ar: "بطاقة", en: "Card" },
-  bank_transfer: { ar: "تحويل بنكي", en: "Bank Transfer" }, cheque: { ar: "شيك", en: "Cheque" },
+  bank_transfer: { ar: "تحويل بنكي", en: "Bank Transfer" }, cheque: { ar: "شيك", en: "Cheque" }, tamara: { ar: "تمارا", en: "Tamara" },
 } as Record<string, { ar: string; en: string }>;
 const STATUS = {
   paid: { ar: "مدفوعة بالكامل", en: "PAID" }, partial: { ar: "مدفوعة جزئياً", en: "PARTIALLY PAID" }, unpaid: { ar: "غير مدفوعة", en: "UNPAID" },

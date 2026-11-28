@@ -14,6 +14,7 @@ const REF_LABEL: Record<string, string> = {
   bank_transfer: "رقم الحوالة / المرجع البنكي",
   bank_card: "رقم العملية (اختياري)",
   cheque: "رقم الشيك",
+  tamara: "رقم الطلب في تمارا (اختياري)",
   cash: "رقم الإيصال الورقي (اختياري)",
 };
 

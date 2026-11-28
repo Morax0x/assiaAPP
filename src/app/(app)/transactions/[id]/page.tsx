@@ -156,7 +156,7 @@ export default async function TransactionPage({ params }: { params: Promise<{ id
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2 text-[15px] font-semibold">
                         <span className={`num ${p.voided ? "line-through" : "text-ok"}`}>{money(p.amount)}</span>
-                        <Badge tone={p.method === "bank_transfer" ? "navy" : p.method === "cheque" ? "orange" : "mute"}>{METHOD_LABEL[p.method] ?? p.method}</Badge>
+                        <Badge tone={p.method === "bank_transfer" ? "navy" : p.method === "cheque" || p.method === "tamara" ? "orange" : "mute"}>{METHOD_LABEL[p.method] ?? p.method}</Badge>
                         {p.voided && <Badge tone="mute">ملغاة</Badge>}
                       </div>
                       <div className="mt-1 space-y-0.5 text-sm text-ink-3">

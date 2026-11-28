@@ -24,7 +24,7 @@ const txnSchema = z.object({
 const paySchema = z.object({
   amount: z.coerce.number().positive("المبلغ يجب أن يكون أكبر من صفر"),
   account_id: z.string().uuid("اختر الحساب"),
-  method: z.enum(["cash", "bank_card", "bank_transfer", "cheque"]),
+  method: z.enum(["cash", "bank_card", "bank_transfer", "cheque", "tamara"]),
   note: z.string().optional(),
   occurred_at: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "تاريخ غير صالح").optional().or(z.literal("")),
   reference_no: z.string().max(80).optional(),

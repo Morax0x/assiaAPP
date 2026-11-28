@@ -54,34 +54,30 @@ const SIZES: { key: Fs; label: string; cls: string }[] = [
 /** Full panel (used in the mobile drawer and the settings page). */
 export function DisplayPanel({ className, compact }: { className?: string; compact?: boolean }) {
   const { theme, fs, setTheme, setFs } = useDisplayPrefs();
+  const row = (label: string, body: React.ReactNode) => (
+    <div className={compact ? "flex items-center gap-2" : undefined}>
+      <div className={cn("text-xs font-medium text-ink-2", compact ? "w-12 shrink-0" : "mb-1.5")}>{label}</div>
+      <div className="grid flex-1 grid-cols-3 gap-1.5">{body}</div>
+    </div>
+  );
   return (
-    <div className={cn("space-y-4", className)}>
-      <div>
-        <div className="mb-1.5 text-xs font-medium text-ink-2">المظهر</div>
-        <div className="grid grid-cols-3 gap-2">
-          {THEMES.map((t) => (
-            <button
-              key={t.key} onClick={() => setTheme(t.key)} aria-pressed={theme === t.key}
-              className={cn("flex flex-col items-center justify-center gap-0.5 rounded-ctl border text-xs", compact ? "h-9" : "h-11", theme === t.key ? "border-navy bg-navy-soft font-semibold text-navy" : "border-line text-ink-2 hover:bg-mute-soft")}
-            >
-              <t.icon className="size-4" strokeWidth={1.75} />{t.label}
-            </button>
-          ))}
-        </div>
-      </div>
-      <div>
-        <div className="mb-1.5 text-xs font-medium text-ink-2">حجم الخط</div>
-        <div className="grid grid-cols-3 gap-2">
-          {SIZES.map((s) => (
-            <button
-              key={s.key} onClick={() => setFs(s.key)} aria-pressed={fs === s.key}
-              className={cn("flex items-center justify-center rounded-ctl border font-semibold", compact ? "h-9" : "h-11", compact ? "text-[13px]" : s.cls, fs === s.key ? "border-navy bg-navy-soft text-navy" : "border-line text-ink-2 hover:bg-mute-soft")}
-            >
-              أ
-            </button>
-          ))}
-        </div>
-      </div>
+    <div className={cn(compact ? "space-y-2" : "space-y-4", className)}>
+      {row("المظهر", THEMES.map((t) => (
+        <button
+          key={t.key} onClick={() => setTheme(t.key)} aria-pressed={theme === t.key} aria-label={t.label}
+          className={cn("flex items-center justify-center gap-1 rounded-ctl border text-xs", compact ? "h-9" : "h-11 flex-col gap-0.5", theme === t.key ? "border-navy bg-navy-soft font-semibold text-navy" : "border-line text-ink-2 hover:bg-mute-soft")}
+        >
+          <t.icon className="size-4 shrink-0" strokeWidth={1.75} />{!compact && t.label}
+        </button>
+      )))}
+      {row("الخط", SIZES.map((s) => (
+        <button
+          key={s.key} onClick={() => setFs(s.key)} aria-pressed={fs === s.key} aria-label={s.label}
+          className={cn("flex items-center justify-center rounded-ctl border font-semibold", compact ? "h-9" : "h-11", compact ? (s.key === "sm" ? "text-[12px]" : s.key === "md" ? "text-[15px]" : "text-[18px]") : s.cls, fs === s.key ? "border-navy bg-navy-soft text-navy" : "border-line text-ink-2 hover:bg-mute-soft")}
+        >
+          أ
+        </button>
+      )))}
     </div>
   );
 }

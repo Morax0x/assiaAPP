@@ -168,23 +168,27 @@ export function AppShell({ children, perms, user, alertCount }: Props) {
       {drawer && (
         <div className="fixed inset-0 z-40 md:hidden">
           <div className="absolute inset-0 bg-ink/40" onClick={() => setDrawer(false)} />
-          <div className="absolute inset-y-0 start-0 flex w-72 flex-col bg-surface safe-t">
+          <div className="absolute start-0 top-0 flex h-dvh max-h-dvh w-72 max-w-[85vw] flex-col overflow-hidden bg-surface safe-t">
             <div className="flex h-14 items-center justify-between border-b border-line px-4">
               <div onClick={() => setDrawer(false)}><Brand /></div>
               <button onClick={() => setDrawer(false)} className="rounded-md p-1.5 hover:bg-mute-soft" aria-label="إغلاق">
                 <X className="size-5" strokeWidth={1.75} />
               </button>
             </div>
-            <nav className="flex-1 overflow-y-auto p-2"><NavGroups items={items} path={path} alertCount={alertCount} /></nav>
-            <div className="border-t border-line p-3 safe-b">
+            <nav className="min-h-0 flex-1 overflow-y-auto p-2"><NavGroups items={items} path={path} alertCount={alertCount} /></nav>
+            <div className="shrink-0 border-t border-line p-3 safe-b">
               <DisplayPanel compact className="mb-3" />
-              <div className="mb-2 text-sm font-medium">{user.name}</div>
-              <div className="mb-3 text-xs text-ink-3">{user.role}</div>
-              <form action={signOut}>
-                <button className="flex h-10 w-full items-center justify-center gap-2 rounded-ctl border border-line text-sm text-ink-2">
-                  <LogOut className="size-4" strokeWidth={1.75} /> تسجيل الخروج
-                </button>
-              </form>
+              <div className="flex items-center gap-2">
+                <div className="min-w-0 flex-1 leading-tight">
+                  <div className="truncate text-sm font-medium">{user.name}</div>
+                  <div className="truncate text-xs text-ink-3">{user.role}</div>
+                </div>
+                <form action={signOut}>
+                  <button className="flex h-10 items-center justify-center gap-2 rounded-ctl border border-line px-3 text-sm text-ink-2" aria-label="تسجيل الخروج">
+                    <LogOut className="size-4" strokeWidth={1.75} /> خروج
+                  </button>
+                </form>
+              </div>
             </div>
           </div>
         </div>
@@ -207,7 +211,7 @@ export function AppShell({ children, perms, user, alertCount }: Props) {
           })}
         </div>
       </nav>
-      {quick.length > 0 && (
+      {quick.length > 0 && !drawer && (
         <div className="md:hidden print:hidden">
           {fab && <div className="fixed inset-0 z-30 bg-ink/30" onClick={() => setFab(false)} />}
           <div className="fixed end-4 z-40 flex flex-col items-end gap-2" style={{ bottom: "calc(env(safe-area-inset-bottom) + 72px)" }}>

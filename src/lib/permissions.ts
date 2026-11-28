@@ -53,6 +53,7 @@ export const METHOD_LABEL: Record<string, string> = {
   bank_card: "بطاقة المكتب",
   bank_transfer: "تحويل بنكي",
   cheque: "شيك",
+  tamara: "تمارا",
 };
 
 export const LEDGER_KIND_LABEL: Record<string, string> = {
