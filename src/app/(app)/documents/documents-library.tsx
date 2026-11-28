@@ -397,17 +397,18 @@ export function DocumentsLibrary({
 
   return (
     <div className="space-y-3">
-      {canDelete && (
+      {(canDelete || (canWrite && canMove) || canConvert) && (
         <div className="flex flex-wrap items-center gap-2">
           {!selecting ? (
-            <Button type="button" variant="outline" size="sm" onClick={() => setSelecting(true)}><Trash2 /> تحديد وحذف</Button>
+            <Button type="button" variant="outline" size="sm" onClick={() => setSelecting(true)}><Folder /> تحديد مستندات</Button>
           ) : (
             <div className="sticky top-16 z-10 flex w-full flex-wrap items-center gap-2 rounded-card border border-navy bg-navy-soft px-3 py-2">
               <span className="text-[15px] font-semibold text-navy"><b className="num">{allPicked.size}</b> مستند محدد</span>
               <span className="text-xs text-ink-3">اضغط على المجلدات أو المستندات لتحديدها</span>
               <div className="ms-auto flex gap-2">
+                {canWrite && canMove && allPicked.size > 0 && <MoveDocumentsDialog ids={[...allPicked]} currentClientId="" targets={moveTargets} onDone={stopSelecting} label="جعلها مستندات عميل / موظف" />}
                 {canConvert && allPicked.size > 0 && <ConvertToClientDialog ids={[...allPicked]} companies={companies} onDone={stopSelecting} label="تحويل المحدد إلى ملف عميل" />}
-                {(allPicked.size > 0 || pickedFolders.size > 0) && (
+                {canDelete && (allPicked.size > 0 || pickedFolders.size > 0) && (
                 <ConfirmButton
                   size="sm" variant="danger"
                   title="حذف المستندات المحددة" confirmLabel="احذف"
