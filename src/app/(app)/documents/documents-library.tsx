@@ -8,7 +8,7 @@ import { Input, Select } from "@/components/ui/form";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { ConfirmButton } from "@/components/ui/confirm-button";
-import { deleteClientFolders, deleteDocuments, deleteFolderPaths } from "@/modules/documents/actions";
+import { deleteClientFolders, deleteDocuments, deleteFolderPaths, setClientsKind } from "@/modules/documents/actions";
 import { ConvertToClientDialog } from "@/components/documents/convert-to-client-dialog";
 import { DocumentPreviewButton } from "@/components/documents/document-preview";
 import { DocumentEditDialog } from "@/components/documents/document-edit-dialog";
@@ -141,15 +141,16 @@ export function DocumentsLibrary({
       const segs = (d.folder ?? "").split("/").filter(Boolean);
       segs.forEach((seg, i) => {
         if (!norm(seg).includes(t)) return;
+        const c = clientById.get(d.client_id);
+        if (!c) return; // the client file was deleted: no folder to open
         const key = `${d.client_id}|${segs.slice(0, i + 1).join("/")}`;
         if (seen.has(key)) return;
         seen.add(key);
-        const c = clientById.get(d.client_id);
-        hits.push({ key: `f${key}`, name: seg, hint: `${c ? pathOf(c) + " › " : ""}${d.client_name}${i ? " › " + segs.slice(0, i).join(" › ") : ""}`, count: 0, loc: locFor(d.client_id, segs.slice(0, i + 1)), folder: true });
+        hits.push({ key: `f${key}`, name: seg, hint: `${pathOf(c)} › ${d.client_name}${i ? " › " + segs.slice(0, i).join(" › ") : ""}`, count: 0, loc: locFor(d.client_id, segs.slice(0, i + 1)), folder: true });
       });
     });
     const prefixOf = (h: (typeof hits)[number]) => h.loc.filter((p) => p.startsWith("d:")).map((p) => p.slice(2)).join("/");
-    hits.forEach((h) => { if (h.folder) { const cid = h.loc.filter((p) => p.startsWith("c:")).pop()!.slice(2); const pre = prefixOf(h); h.count = (byClient.get(cid) ?? []).filter((d) => { const f = (d.folder ?? "").split("/").filter(Boolean).join("/"); return f === pre || f.startsWith(pre + "/"); }).length; } });
+    hits.forEach((h) => { if (h.folder) { const cid = h.loc.filter((p) => p.startsWith("c:")).pop()?.slice(2) ?? ""; const pre = prefixOf(h); h.count = (byClient.get(cid) ?? []).filter((d) => { const f = (d.folder ?? "").split("/").filter(Boolean).join("/"); return f === pre || f.startsWith(pre + "/"); }).length; } });
     return hits.slice(0, 80);
   }, [nameSearch, q, moveTargets, docs, clientById, allOf, locFor, byClient]);
   const results = React.useMemo(() => {
@@ -421,6 +422,18 @@ export function DocumentsLibrary({
                     stopSelecting(); return r;
                   }}
                 ><Trash2 /> حذف المستندات</ConfirmButton>)}
+                {canConvert && pickedClients.size > 0 && (
+                <ConfirmButton
+                  size="sm" variant="outline"
+                  title="تحويل المحدد إلى شركات" confirmLabel="حوّل إلى شركات"
+                  message={`سيصبح ${pickedClients.size} ملف شركات (يُنقل من الأفراد أو الكفلاء أو الموظفين إلى قسم الشركات). المستندات والمعاملات تبقى كما هي.`}
+                  action={async () => {
+                    const r = await setClientsKind([...pickedClients], "company");
+                    if (!r.ok) return r;
+                    toast.success(`تم تحويل ${r.data!.changed} ملف إلى شركات`);
+                    stopSelecting(); return r;
+                  }}
+                ><Building2 /> جعل المحدد شركات</ConfirmButton>)}
                 {canDeleteClients && pickedClients.size > 0 && (
                 <ConfirmButton
                   size="sm" variant="danger"

@@ -319,6 +319,23 @@ export async function convertToClient(ids: string[], name: string, kind: "indivi
  * Deletes whole client folders: all their documents (and their employees') go to the trash, and the client file itself
  * is deleted too unless it has transactions or quotes (those are kept, and reported back).
  */
+export async function setClientsKind(clientIds: string[], kind: "individual" | "company" | "sponsor") {
+  return safe(async () => {
+    await requireAction("clients.write");
+    const ids = [...new Set(clientIds)].slice(0, 500);
+    if (!ids.length) throw new Error("لم تحدد مجلداً");
+    const supabase = await createClient();
+    // a company has no parent; its former employees stay attached to the company they belonged to
+    const patch = kind === "company" ? { kind, parent_id: null } : { kind };
+    for (let i = 0; i < ids.length; i += 100) {
+      const { error } = await supabase.from("clients").update(patch).is("deleted_at", null).in("id", ids.slice(i, i + 100));
+      if (error) throw error;
+    }
+    ["/documents", "/clients", "/alerts", "/dashboard"].forEach((x) => revalidatePath(x));
+    return { changed: ids.length };
+  });
+}
+
 export async function deleteClientFolders(clientIds: string[]) {
   return safe(async () => {
     await requireAction("docs.delete");
